@@ -1,0 +1,7 @@
+project_id = "qxhjetvrpxyrfexnbyzr"
+
+[functions.chat-ia]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
