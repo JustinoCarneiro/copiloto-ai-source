@@ -1,0 +1,19 @@
+{
+	# E-mail pra avisos de renovação de certificado Let's Encrypt — trocar pelo seu.
+	email seu-email@seudominio.com.br
+}
+
+{$APP_DOMAIN} {
+	reverse_proxy frontend:80
+	encode gzip
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+{$API_DOMAIN} {
+	reverse_proxy kong:8000
+	encode gzip
+}

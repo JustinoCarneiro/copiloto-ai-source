@@ -1,0 +1,183 @@
+name: copiloto-ai
+
+# Stack self-hosted do Supabase (Postgres + Auth + PostgREST + Edge Functions + Studio) + Kong
+# como gateway + Caddy como reverse proxy/SSL + o frontend estático. Trimado de propósito: sem
+# Storage/Realtime/imgproxy/analytics, que este projeto não usa (ver
+# memoria-tecnica/decisoes/self-host-supabase-vps.md). Ver deploy/RUNBOOK.md antes de subir.
+#
+# Versões pinadas de propósito — não usar `:latest`. Se alguma imagem falhar ao puxar, checar
+# tags atuais em https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml
+# antes de trocar (o self-host oficial evolui as versões junto).
+
+services:
+  db:
+    image: supabase/postgres:15.6.1.146
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Migrations do projeto rodam por fora (ver RUNBOOK — passo explícito via psql), não
+      # auto-aplicadas no boot, pra dar controle sobre a ordem e poder validar cada uma.
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    image: supabase/gotrue:v2.158.1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      # Login com Google nativo (substitui o proxy do Lovable Cloud que o código usava antes —
+      # ver memoria-tecnica/decisoes/self-host-supabase-vps.md). Credenciais vêm do Google Cloud
+      # Console, não da Supabase — ver RUNBOOK.md "Configurar login com Google".
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: "true"
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL}/auth/v1/callback
+
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+
+  functions:
+    image: supabase/edge-runtime:v1.58.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
+      # Segredos de negócio que as functions leem via Deno.env.get — mesmos nomes do código.
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN}
+      MP_WEBHOOK_TOKEN: ${MP_WEBHOOK_TOKEN}
+      PAYMENT_GATEWAY: ${PAYMENT_GATEWAY}
+      APP_URL: ${APP_URL}
+      LOVABLE_API_KEY: ${LOVABLE_API_KEY}
+      VERIFY_JWT: "false" # controlado por função individualmente, igual ao config.toml atual
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+    volumes:
+      # Código real das functions do projeto, montado direto — nada duplicado. Cada subpasta
+      # (chat-ia/, payments-subscribe/, _shared/...) vira o que o dispatcher abaixo espera.
+      - ../supabase/functions:/home/deno/functions:ro
+      # Dispatcher que roteia /functions/v1/<nome> pra cada função (mount aninhado dentro do
+      # mount acima — não conflita, Docker resolve o mais específico primeiro).
+      - ./functions-main:/home/deno/functions/main:ro
+
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+  studio:
+    image: supabase/studio:20241001-c7c6a5d
+    restart: unless-stopped
+    depends_on:
+      - meta
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      DEFAULT_ORGANIZATION_NAME: "Copiloto AI"
+      DEFAULT_PROJECT_NAME: "Copiloto AI"
+
+  kong:
+    image: kong:3.6
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+      - functions
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: cors,basic-auth
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    volumes:
+      - ./kong.yml:/home/kong/kong.yml.template:ro
+    # kong.yml.template tem ${DASHBOARD_USERNAME}/${DASHBOARD_PASSWORD} — Kong não faz
+    # interpolação de env sozinho, então renderiza com envsubst antes de subir (mesmo padrão
+    # do self-host oficial da Supabase).
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        envsubst '$${DASHBOARD_USERNAME} $${DASHBOARD_PASSWORD}' < /home/kong/kong.yml.template > /home/kong/kong.yml
+        exec /docker-entrypoint.sh kong docker-start
+    ports:
+      - "127.0.0.1:8000:8000" # só localhost — Caddy é quem expõe pra fora
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      - kong
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

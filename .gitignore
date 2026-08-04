@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Segredos reais do deploy self-hosted — só .env.example vai pro repo
+deploy/.env
+
 # Estado transiente de sessão do Claude Code (lock de tarefas agendadas), não config do projeto
 .claude/scheduled_tasks.lock
 

@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextValue {
@@ -37,8 +36,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signInWithGoogle = async () => {
-    await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: `${window.location.origin}/`,
+    // OAuth nativo do Supabase Auth (GoTrue) — não depende de nenhum serviço do Lovable Cloud.
+    // Requer o provider Google configurado no GoTrue (ver deploy/docker-compose.yml e
+    // deploy/RUNBOOK.md "Configurar login com Google").
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
     });
   };
 
