@@ -1,9 +1,12 @@
 name: copiloto-ai
 
 # Stack self-hosted do Supabase (Postgres + Auth + PostgREST + Edge Functions + Studio) + Kong
-# como gateway + Caddy como reverse proxy/SSL + o frontend estático. Trimado de propósito: sem
-# Storage/Realtime/imgproxy/analytics, que este projeto não usa (ver
-# memoria-tecnica/decisoes/self-host-supabase-vps.md). Ver deploy/RUNBOOK.md antes de subir.
+# como gateway + o frontend estático. Trimado de propósito: sem Storage/Realtime/imgproxy/
+# analytics, que este projeto não usa, e SEM proxy/SSL em Docker — esta VPS já tem nginx +
+# certbot do sistema cuidando disso pros outros projetos (Sistema Melvin, Sistema Lucas). Kong e
+# frontend só publicam em 127.0.0.1, o nginx do host é quem expõe 80/443 pra internet (ver
+# deploy/nginx-vhost-example.conf e deploy/RUNBOOK.md). Detalhe completo dos achados reais desta
+# VPS em memoria-tecnica/decisoes/self-host-supabase-vps.md.
 #
 # Versões pinadas de propósito — não usar `:latest`. Se alguma imagem falhar ao puxar, checar
 # tags atuais em https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml
@@ -149,7 +152,11 @@ services:
         envsubst '$${DASHBOARD_USERNAME} $${DASHBOARD_PASSWORD}' < /home/kong/kong.yml.template > /home/kong/kong.yml
         exec /docker-entrypoint.sh kong docker-start
     ports:
-      - "127.0.0.1:8000:8000" # só localhost — Caddy é quem expõe pra fora
+      # 8092, não 8000 — porta 8000 já é usada pelo Coolify nesta VPS (ver
+      # memoria-tecnica/decisoes/self-host-supabase-vps.md, seção "Achados reais da VPS
+      # compartilhada"). Só localhost: o nginx do sistema (fora do Docker, mesmo padrão de
+      # Sistema Melvin/Lucas) é quem expõe pra fora via proxy_pass, não o Kong diretamente.
+      - "127.0.0.1:8092:8000"
 
   frontend:
     build:
@@ -159,25 +166,10 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
     restart: unless-stopped
-
-  caddy:
-    image: caddy:2.8-alpine
-    restart: unless-stopped
-    depends_on:
-      - kong
-      - frontend
     ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      APP_DOMAIN: ${APP_DOMAIN}
-      API_DOMAIN: ${API_DOMAIN}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      # 8091: porta livre confirmada nesta VPS (Melvin usa 3000/8443, Lucas usa 8081/8082,
+      # Coolify usa 8000/8090/6001-6002). Só localhost, mesma lógica do kong acima.
+      - "127.0.0.1:8091:80"
 
 volumes:
   db-data:
-  caddy-data:
-  caddy-config:
