@@ -20,6 +20,21 @@ export const monthRange = (date = new Date()) => {
 export const monthLabel = (date = new Date()) =>
   new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date);
 
+/**
+ * Quebra um texto com marcação `**negrito**` em segmentos, sem produzir HTML — quem renderiza
+ * decide como exibir `bold`. Existe pra evitar `dangerouslySetInnerHTML` com texto que pode conter
+ * dado do usuário (ex.: nome de categoria) em vez de sanitizar HTML depois de já ter sido gerado.
+ */
+export function parseBoldSegments(text: string): { text: string; bold: boolean }[] {
+  return text
+    .split(/(\*\*.*?\*\*)/g)
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const match = part.match(/^\*\*(.*)\*\*$/);
+      return match ? { text: match[1], bold: true } : { text: part, bold: false };
+    });
+}
+
 /** Diferença em dias entre uma data alvo e hoje. Negativo = atrasada. */
 export const daysUntil = (target: string | Date): number => {
   const date = typeof target === "string" ? new Date(target + (target.length === 10 ? "T00:00:00" : "")) : target;

@@ -23,7 +23,8 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
   aviso dedicado em outro doc) — isso duplicaria a fonte de verdade em vez de complementá-la.
 
 ## Bugs
-*(vazio — projeto entrou na metodologia Onda-Dev em 2026-08-04, retroativamente; nasce vazia)*
+- [[rls-subscriptions-sem-with-check]] — crítico: RLS de `subscriptions` sem `WITH CHECK` permitia
+  auto-promoção a Premium sem pagar. Resolvido em 2026-08-04.
 
 ## Decisões
 - [[eslint-scope-supabase-functions]] — por que `supabase/functions` saiu do escopo do eslint e

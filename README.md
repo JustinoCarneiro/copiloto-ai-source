@@ -1,7 +1,11 @@
 # Copiloto AI
 
+[![CI / Smoke Tests](https://github.com/JustinoCarneiro/copiloto-ai-source/actions/workflows/ci.yml/badge.svg)](https://github.com/JustinoCarneiro/copiloto-ai-source/actions/workflows/ci.yml)
+
 SaaS de finanças pessoais com assistente de IA que registra lançamentos por texto/voz e responde
 perguntas analíticas sobre o dinheiro do usuário.
+
+Repositório: [github.com/JustinoCarneiro/copiloto-ai-source](https://github.com/JustinoCarneiro/copiloto-ai-source) (privado)
 
 Projeto desenvolvido seguindo a [metodologia Onda-Dev](https://github.com/JustinoCarneiro/onda-starter).
 

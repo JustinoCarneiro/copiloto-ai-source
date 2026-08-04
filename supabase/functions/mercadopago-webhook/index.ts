@@ -5,6 +5,18 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { serviceClient } from "../_shared/auth.ts";
 import { getPaymentService } from "../_shared/payments/service.ts";
 import { MercadoPagoProvider } from "../_shared/payments/mercadopago.ts";
+import { timingSafeEqual } from "https://deno.land/std@0.224.0/crypto/timing_safe_equal.ts";
+
+// Comparação de tempo constante — evita vazar o token por diferença de tempo de resposta
+// (achado de segurança de 2026-08-04; `!==` simples permitia timing attack em teoria).
+function safeTokenMatch(got: string | null, expected: string): boolean {
+  if (!got) return false;
+  const enc = new TextEncoder();
+  const a = enc.encode(got);
+  const b = enc.encode(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -13,7 +25,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const expected = Deno.env.get("MP_WEBHOOK_TOKEN");
   const got = url.searchParams.get("token") ?? req.headers.get("x-webhook-token");
-  if (!expected || got !== expected) {
+  if (!expected || !safeTokenMatch(got, expected)) {
     console.warn("mercadopago-webhook: token inválido");
     return jsonResponse({ error: "Unauthorized" }, 401);
   }

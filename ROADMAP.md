@@ -131,12 +131,32 @@ Response 403 em todas: { error: "Acesso restrito" } se role != admin
 
 M01→E1 · M02→E8 · M03→E7 · M04→E2 · M05→E3 · M06→E4 · M07→E5 · M08→E6 · M09→E9 · M10→E1,E10.
 
-## Débito técnico registrado (card na lista de Arquitetura do Trello)
+## Débito técnico registrado (cards na lista de Arquitetura do Trello)
 
-**Cobertura de testes.** Único arquivo de teste hoje é `src/test/example.test.ts` (placeholder).
-Nenhum módulo acima passou por Red/Green/Refactor formal. Próxima mudança em qualquer módulo M01–M10
-deve iniciar cobertura real dele antes/durante a alteração — começando pelos módulos Grande
-(M01, M02, M03).
+**Cobertura de testes — progresso parcial em 2026-08-04.** Além do placeholder original
+(`src/test/example.test.ts`), agora existem 17 testes reais:
+- `src/lib/subscription.test.ts` (10 testes) — cobre `computeSubscriptionState`, a lógica de
+  trial/premium extraída de `usePremium.ts` (M02, módulo Grande/alto risco). Cobre o cálculo de
+  estado, **não** cobre ainda as edge functions de pagamento (`payments-subscribe`,
+  `payments-cancel`, `mercadopago-webhook`) — isso continua pendente.
+- `src/lib/format.test.ts` (7 testes) — `formatBRL`, `monthRange`, `daysUntil` (transversal a
+  M03/M06/M08).
+
+M01 (Auth/RBAC) e M03 (Copiloto IA) continuam **sem nenhuma cobertura**. Checklist detalhado no
+card "Débito técnico: cobertura de testes automatizados (TDD)" do Trello.
+
+**Dependências vulneráveis (npm audit, resolvido em 2026-08-04).** 16 de 20 vulnerabilidades
+corrigidas via `npm audit fix` sem major bump. As 4 restantes (Vite/esbuild moderate, React Router
+moderate/high) exigem major version bump (Vite 5→8, React Router 6→7) — não aplicado sem
+cobertura de teste prévia para pegar regressão. Card dedicado no Trello.
+
+**Escopo do eslint (resolvido em 2026-08-04).** `supabase/functions` (Deno) estava sendo lintado
+com a config de frontend por engano — corrigido. Ver
+`memoria-tecnica/decisoes/eslint-scope-supabase-functions.md`.
+
+**Lockfiles (`npm` vs `bun`, decisão registrada em 2026-08-04).** Ver
+`memoria-tecnica/decisoes/gerenciador-de-pacotes-npm-vs-bun.md` — `bun.lock`/`bun.lockb` mantidos
+por incerteza sobre o pipeline de deploy do Lovable Cloud, não removidos sem confirmação.
 
 ## Prazo técnico
 

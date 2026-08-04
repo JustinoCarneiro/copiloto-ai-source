@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatBRL, monthLabel, formatDateLong } from "@/lib/format";
+import { formatBRL, monthLabel, formatDateLong, parseBoldSegments } from "@/lib/format";
 import { ArrowDownRight, ArrowUpRight, Wallet, FileDown, Copy, Share2, TrendingUp, BarChart3, Sparkles, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { usePremium } from "@/hooks/usePremium";
@@ -300,7 +300,15 @@ const Relatorios = () => {
             {insights.map((t, i) => (
               <li key={i} className="text-sm flex items-start gap-2">
                 <TrendingUp className="size-4 text-primary mt-0.5 shrink-0" />
-                <span dangerouslySetInnerHTML={{ __html: t.replace(/\*\*(.*?)\*\*/g, '<strong class="text-foreground">$1</strong>') }} />
+                <span>
+                  {parseBoldSegments(t).map((seg, si) =>
+                    seg.bold ? (
+                      <strong key={si} className="text-foreground">{seg.text}</strong>
+                    ) : (
+                      <span key={si}>{seg.text}</span>
+                    )
+                  )}
+                </span>
               </li>
             ))}
           </ul>

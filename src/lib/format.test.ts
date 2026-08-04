@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysUntil, formatBRL, monthRange } from "./format";
+import { daysUntil, formatBRL, monthRange, parseBoldSegments } from "./format";
 
 describe("formatBRL", () => {
   it("formata valor positivo em BRL", () => {
@@ -22,6 +22,28 @@ describe("monthRange", () => {
   it("lida com ano bissexto corretamente", () => {
     const { end } = monthRange(new Date(2028, 1, 10)); // 2028 é bissexto
     expect(end).toBe("2028-02-29");
+  });
+});
+
+describe("parseBoldSegments", () => {
+  it("separa texto simples sem negrito num único segmento", () => {
+    expect(parseBoldSegments("sem negrito aqui")).toEqual([{ text: "sem negrito aqui", bold: false }]);
+  });
+
+  it("identifica um trecho em negrito no meio do texto", () => {
+    expect(parseBoldSegments("Sua maior categoria foi **Mercado** este mês")).toEqual([
+      { text: "Sua maior categoria foi ", bold: false },
+      { text: "Mercado", bold: true },
+      { text: " este mês", bold: false },
+    ]);
+  });
+
+  it("nunca produz HTML — mesmo com tags no texto, tudo vira segmento de texto puro", () => {
+    const malicioso = "**<img src=x onerror=alert(1)>**";
+    const segmentos = parseBoldSegments(malicioso);
+    expect(segmentos).toEqual([{ text: "<img src=x onerror=alert(1)>", bold: true }]);
+    // nenhum segmento contém HTML já "montado" (sem tags de abertura/fechamento coladas) —
+    // quem renderiza usa {seg.text} como texto React, que escapa automaticamente.
   });
 });
 

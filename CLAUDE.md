@@ -97,11 +97,15 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
 - **Ao resolver um bug não-trivial ou tomar uma decisão fora da spec**, registrar nota nova em `memoria-tecnica/` (templates em `memoria-tecnica/templates/`), linkando às notas relacionadas com a notação `[[nome-da-nota]]`.
 
 ## Débito técnico conhecido
-- **Cobertura de testes automatizados.** Só existe um teste placeholder (`src/test/example.test.ts`).
-  O sistema foi construído e está em produção sem TDD — o pilar "Sólido" da Definição de Pronto da
-  Onda não está satisfeito retroativamente. A partir de agora, toda mudança em módulo existente ou
-  módulo novo entra pela Esteira XP (`onda-xp-tdd`), com Red/Green/Refactor de verdade. Card
-  correspondente na lista de Arquitetura do Trello.
+- **Cobertura de testes automatizados — parcial.** Além do placeholder original, `src/lib/
+  subscription.ts` (lógica de trial/premium do M02) e `src/lib/format.ts` já têm testes reais (17
+  no total, 2026-08-04). M01 (Auth/RBAC), M03 (Copiloto IA) e as edge functions de pagamento
+  continuam sem cobertura — o pilar "Sólido" da Definição de Pronto ainda não está satisfeito de
+  ponta a ponta. Toda mudança em módulo existente ou módulo novo entra pela Esteira XP
+  (`onda-xp-tdd`), com Red/Green/Refactor de verdade. Detalhe em `ROADMAP.md` e no card de
+  Arquitetura do Trello.
+- **4 vulnerabilidades de dependência sem fix não-breaking** (Vite/esbuild, React Router) — exigem
+  major bump; adiado até haver cobertura de teste suficiente pra validar a migração sem regressão.
 
 ## Ponteiros
 - Histórias completas: `./docs/spec.md`
