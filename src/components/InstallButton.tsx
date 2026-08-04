@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import type { VariantProps } from "class-variance-authority";
 import { Download, X } from "lucide-react";
 
 interface BIPEvent extends Event {
@@ -13,12 +14,17 @@ const isInIframe = (() => {
 
 const isStandalone = () =>
   window.matchMedia("(display-mode: standalone)").matches ||
-  // @ts-ignore iOS
+  // @ts-expect-error iOS-only, não tipado no lib.dom
   window.navigator.standalone === true;
 
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-export const InstallButton = ({ variant = "hero", className }: { variant?: any; className?: string }) => {
+interface InstallButtonProps {
+  variant?: VariantProps<typeof buttonVariants>["variant"];
+  className?: string;
+}
+
+export const InstallButton = ({ variant = "hero", className }: InstallButtonProps) => {
   const [evt, setEvt] = useState<BIPEvent | null>(null);
   const [showIOS, setShowIOS] = useState(false);
 

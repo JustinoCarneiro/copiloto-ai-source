@@ -26,5 +26,10 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
 *(vazio — projeto entrou na metodologia Onda-Dev em 2026-08-04, retroativamente; nasce vazia)*
 
 ## Decisões
-*(vazio — decisões arquiteturais que já existiam no código, como o desacoplamento de gateway de
-pagamento em `PaymentProvider`, ficam documentadas no `ROADMAP.md`, não repetidas aqui)*
+- [[eslint-scope-supabase-functions]] — por que `supabase/functions` saiu do escopo do eslint e
+  `no-explicit-any` foi rebaixado a `warn` temporariamente.
+- [[gerenciador-de-pacotes-npm-vs-bun]] — por que `bun.lock`/`bun.lockb` foram mantidos mesmo com
+  npm como padrão de dev/CI.
+
+Decisões arquiteturais que já existiam no código antes deste retrofit (ex.: desacoplamento de
+gateway de pagamento em `PaymentProvider`) ficam documentadas no `ROADMAP.md`, não repetidas aqui.
