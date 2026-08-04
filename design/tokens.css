@@ -1,0 +1,77 @@
+/* Copiloto AI — design tokens
+   Extraído de src/index.css em 2026-08-04 (Fase 2 retroativa — identidade já congelada em produção).
+   Fonte da verdade continua sendo src/index.css; este arquivo documenta os mesmos valores no
+   formato Onda-Dev para consumo por onda-layout em telas/fluxos novos.
+   Todas as cores em HSL (h s% l%), sem hsl() — igual ao padrão shadcn/Tailwind.
+*/
+
+:root {
+  /* Superfícies — tema escuro único (sem variante light) */
+  --background: 0 0% 4%;              /* #0B0B0B */
+  --foreground: 0 0% 100%;
+  --card: 0 0% 10%;                   /* #1A1A1A */
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 0 0% 100%;
+
+  /* Marca — laranja neon */
+  --primary: 24 100% 50%;             /* #FF6A00 */
+  --primary-foreground: 0 0% 7%;
+  --primary-glow: 22 100% 63%;        /* #FF8C42 */
+
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 24 100% 50%;
+  --accent-foreground: 0 0% 7%;
+
+  /* Semânticas */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --warning: 38 100% 55%;
+
+  --border: 0 0% 16%;
+  --input: 0 0% 14%;
+  --ring: 24 100% 50%;
+
+  --radius: 1rem;
+
+  /* Gradientes de marca */
+  --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%), hsl(22 100% 63%));
+  --gradient-card: linear-gradient(145deg, hsl(0 0% 11%), hsl(0 0% 7%));
+  --gradient-glow: radial-gradient(circle at 50% 0%, hsl(24 100% 50% / 0.25), transparent 60%);
+  --gradient-dark: linear-gradient(180deg, hsl(0 0% 6%), hsl(0 0% 3%));
+
+  /* Sombras / glow */
+  --shadow-glow: 0 0 40px hsl(24 100% 50% / 0.35), 0 0 80px hsl(24 100% 50% / 0.15);
+  --shadow-glow-sm: 0 0 16px hsl(24 100% 50% / 0.4);
+  --shadow-card: 0 8px 32px hsl(0 0% 0% / 0.5);
+  --shadow-elevated: 0 20px 60px -10px hsl(0 0% 0% / 0.7), 0 0 0 1px hsl(0 0% 100% / 0.05);
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Navegação lateral */
+  --sidebar-background: 0 0% 5%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 24 100% 50%;
+  --sidebar-primary-foreground: 0 0% 7%;
+  --sidebar-accent: 0 0% 12%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 14%;
+  --sidebar-ring: 24 100% 50%;
+
+  /* Cores fixas de categoria (paleta usada em categorias/cartões/metas) */
+  --chart-orange: #FF6A00;
+  --chart-purple: #A855F7;
+  --chart-blue: #3B82F6;
+  --chart-green: #10B981;
+  --chart-red: #EF4444;
+  --chart-cyan: #0EA5E9;
+
+  /* Tipografia */
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: 'Orbitron', system-ui, sans-serif; /* títulos (h1-h3, .font-display) */
+}
