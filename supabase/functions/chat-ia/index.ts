@@ -1,6 +1,19 @@
 // Copiloto AI — chat + registro de gastos + analítica financeira contextual
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { requireUser, serviceClient } from "../_shared/auth.ts";
+import {
+  aggCompararMeses, aggGastosPorCartao, aggGastosPorCategoria, aggGastosRecorrentes,
+  aggMediaGastos, aggResumoMes, aggTendenciaCategoria, clampLimite, computeMetas,
+  melhorCartaoHoje, monthRange, parseMonth, type Gasto,
+} from "../_shared/analytics.ts";
+import { decideRegistrar } from "./toolRouting.ts";
+
+// serviceClient() (_shared/auth.ts) não usa o generic Database — sem ele, o supabase-js não
+// sabe que categoria_id/cartao_id são FK many-to-one e infere o embed (`categoria:categorias(...)`)
+// como array no tipo. Em runtime o PostgREST sempre devolve objeto único pra esse tipo de
+// relação (é assim que já funcionava antes, só sem checagem de tipo nenhuma — era `any`). Cast
+// documentado em vez de mudar a tipagem do client em todas as functions.
+const asGastos = (data: unknown) => (data ?? []) as Gasto[];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,18 +124,6 @@ const tools = [
   { type: "function", function: { name: "resumo_analitico", description: "Panorama financeiro completo: mês atual, delta vs mês anterior, top categorias, contas a vencer, metas, cartão sugerido.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
 ];
 
-// --- helpers ---
-const monthRange = (year: number, monthIdx: number) => ({
-  ini: new Date(year, monthIdx, 1).toISOString().slice(0, 10),
-  fim: new Date(year, monthIdx + 1, 0).toISOString().slice(0, 10),
-});
-const parseMonth = (s?: string) => {
-  if (!s || !/^\d{4}-\d{2}$/.test(s)) return null;
-  const [y, m] = s.split("-").map(Number);
-  return { y, m: m - 1 };
-};
-const brl = (n: number) => `R$ ${n.toFixed(2).replace(".", ",")}`;
-
 async function runTool(name: string, args: any, userId: string): Promise<any> {
   const s = serviceClient();
   const now = new Date();
@@ -130,23 +131,14 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
 
   if (name === "consultar_resumo_mes") {
     const { data } = await s.from("gastos").select("tipo,valor").eq("user_id", userId).gte("data", ini).lte("data", fim);
-    const entradas = (data ?? []).filter((g: any) => g.tipo === "entrada").reduce((a, g: any) => a + Number(g.valor), 0);
-    const saidas = (data ?? []).filter((g: any) => g.tipo === "saida").reduce((a, g: any) => a + Number(g.valor), 0);
-    return { mes: `${now.getMonth() + 1}/${now.getFullYear()}`, entradas, saidas, saldo: entradas - saidas };
+    return aggResumoMes(data ?? [], `${now.getMonth() + 1}/${now.getFullYear()}`);
   }
 
   if (name === "consultar_gastos_categoria") {
     const { data } = await s.from("gastos")
       .select("valor,categoria:categorias(nome)")
       .eq("user_id", userId).eq("tipo", "saida").gte("data", ini).lte("data", fim);
-    const map: Record<string, number> = {};
-    (data ?? []).forEach((g: any) => {
-      const nome = g.categoria?.nome ?? "Sem categoria";
-      map[nome] = (map[nome] ?? 0) + Number(g.valor);
-    });
-    let list = Object.entries(map).map(([categoria, total]) => ({ categoria, total }));
-    if (args?.categoria) list = list.filter((x) => x.categoria.toLowerCase().includes(String(args.categoria).toLowerCase()));
-    return list.sort((a, b) => b.total - a.total);
+    return aggGastosPorCategoria(asGastos(data), args?.categoria ? String(args.categoria) : undefined);
   }
 
   if (name === "listar_contas_pendentes") {
@@ -161,18 +153,11 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
   if (name === "consultar_metas") {
     const { data } = await s.from("metas").select("nome,valor_objetivo,valor_atual,data_objetivo").eq("user_id", userId);
     // Estimativa: assume ritmo de aporte = (valor_atual / meses desde criação). Sem coluna de aporte histórico, retornamos só progresso.
-    return (data ?? []).map((m: any) => ({
-      nome: m.nome,
-      objetivo: Number(m.valor_objetivo),
-      atual: Number(m.valor_atual),
-      faltam: Math.max(0, Number(m.valor_objetivo) - Number(m.valor_atual)),
-      progresso_pct: Number(m.valor_objetivo) > 0 ? Math.round((Number(m.valor_atual) / Number(m.valor_objetivo)) * 100) : 0,
-      data_objetivo: m.data_objetivo,
-    }));
+    return computeMetas(data ?? []);
   }
 
   if (name === "maiores_gastos") {
-    const lim = Math.min(20, Math.max(1, args?.limite ?? 5));
+    const lim = clampLimite(args?.limite);
     const { data } = await s.from("gastos")
       .select("descricao,destino,valor,data,categoria:categorias(nome)")
       .eq("user_id", userId).eq("tipo", "saida").gte("data", ini).lte("data", fim)
@@ -184,15 +169,7 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
     const { data } = await s.from("gastos")
       .select("valor,cartao:cartoes(id,nome,limite,dia_fechamento)")
       .eq("user_id", userId).eq("tipo", "saida").gte("data", ini).lte("data", fim);
-    const map: Record<string, { cartao: string; total: number; limite: number | null; utilizacao_pct: number | null }> = {};
-    (data ?? []).forEach((g: any) => {
-      const c = g.cartao;
-      const nome = c?.nome ?? "Sem cartão";
-      if (!map[nome]) map[nome] = { cartao: nome, total: 0, limite: c?.limite ?? null, utilizacao_pct: null };
-      map[nome].total += Number(g.valor);
-    });
-    Object.values(map).forEach((x) => { if (x.limite && x.limite > 0) x.utilizacao_pct = Math.round((x.total / x.limite) * 100); });
-    return Object.values(map).sort((a, b) => b.total - a.total);
+    return aggGastosPorCartao(asGastos(data));
   }
 
   if (name === "comparar_meses") {
@@ -204,24 +181,7 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
       s.from("gastos").select("valor,categoria:categorias(nome)").eq("user_id", userId).eq("tipo", "saida").gte("data", rangeA.ini).lte("data", rangeA.fim),
       s.from("gastos").select("valor,categoria:categorias(nome)").eq("user_id", userId).eq("tipo", "saida").gte("data", rangeB.ini).lte("data", rangeB.fim),
     ]);
-    const agg = (rows: any[] | null) => {
-      const total = (rows ?? []).reduce((s, g) => s + Number(g.valor), 0);
-      const cats: Record<string, number> = {};
-      (rows ?? []).forEach((g) => { const n = g.categoria?.nome ?? "Sem categoria"; cats[n] = (cats[n] ?? 0) + Number(g.valor); });
-      return { total, cats };
-    };
-    const aa = agg(ra.data as any[]); const bb = agg(rb.data as any[]);
-    const delta = aa.total - bb.total;
-    const deltaPct = bb.total > 0 ? Math.round((delta / bb.total) * 100) : null;
-    const catsDelta = Object.keys({ ...aa.cats, ...bb.cats }).map((n) => {
-      const va = aa.cats[n] ?? 0; const vb = bb.cats[n] ?? 0;
-      return { categoria: n, mes_a: va, mes_b: vb, delta: va - vb, delta_pct: vb > 0 ? Math.round(((va - vb) / vb) * 100) : null };
-    }).sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta)).slice(0, 6);
-    return {
-      mes_a: `${a.m + 1}/${a.y}`, mes_b: `${b.m + 1}/${b.y}`,
-      total_a: aa.total, total_b: bb.total, delta, delta_pct: deltaPct,
-      categorias: catsDelta,
-    };
+    return aggCompararMeses(asGastos(ra.data), asGastos(rb.data), `${a.m + 1}/${a.y}`, `${b.m + 1}/${b.y}`);
   }
 
   if (name === "tendencia_categoria") {
@@ -230,15 +190,7 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
     const { data } = await s.from("gastos")
       .select("valor,data,categoria:categorias(nome)")
       .eq("user_id", userId).eq("tipo", "saida").gte("data", desde);
-    const q = String(args.categoria).toLowerCase();
-    const rows = (data ?? []).filter((g: any) => (g.categoria?.nome ?? "").toLowerCase().includes(q));
-    if (rows.length === 0) return { categoria: args.categoria, sem_dados: true };
-    // metade recente vs metade anterior
-    const meio = new Date(now.getTime() - (semanas / 2) * 7 * 86400000).toISOString().slice(0, 10);
-    const recente = rows.filter((r: any) => r.data >= meio).reduce((s, r: any) => s + Number(r.valor), 0);
-    const anterior = rows.filter((r: any) => r.data < meio).reduce((s, r: any) => s + Number(r.valor), 0);
-    const delta_pct = anterior > 0 ? Math.round(((recente - anterior) / anterior) * 100) : null;
-    return { categoria: args.categoria, semanas, total_periodo: recente + anterior, recente, anterior, delta_pct };
+    return aggTendenciaCategoria(asGastos(data), String(args.categoria), args?.semanas, now);
   }
 
   if (name === "media_gastos") {
@@ -249,37 +201,21 @@ async function runTool(name: string, args: any, userId: string): Promise<any> {
       const { data } = await s.from("gastos").select("valor").eq("user_id", userId).eq("tipo", "saida").gte("data", r.ini).lte("data", r.fim);
       totals.push((data ?? []).reduce((s, g: any) => s + Number(g.valor), 0));
     }
-    const media = totals.reduce((a, b) => a + b, 0) / meses;
     const r0 = monthRange(now.getFullYear(), now.getMonth());
     const { data: cur } = await s.from("gastos").select("valor").eq("user_id", userId).eq("tipo", "saida").gte("data", r0.ini).lte("data", r0.fim);
     const atual = (cur ?? []).reduce((s, g: any) => s + Number(g.valor), 0);
-    return { meses_base: meses, media, mes_atual: atual, acima_da_media: atual > media, diferenca: atual - media };
+    return aggMediaGastos(totals, atual, meses);
   }
 
   if (name === "melhor_cartao_hoje") {
     const { data } = await s.from("cartoes").select("nome,dia_fechamento,dia_vencimento").eq("user_id", userId).eq("tipo", "credito");
-    if (!data || data.length === 0) return { sem_dados: true };
-    const hoje = now.getDate();
-    const rank = data.map((c: any) => {
-      const df = c.dia_fechamento;
-      if (!df) return { ...c, dias_ate_fechar: -1 };
-      const dias = df >= hoje ? df - hoje : 30 - hoje + df;
-      return { ...c, dias_ate_fechar: dias };
-    }).filter((c) => c.dias_ate_fechar >= 0).sort((a, b) => b.dias_ate_fechar - a.dias_ate_fechar);
-    return { melhor: rank[0] ?? null, todos: rank };
+    return melhorCartaoHoje(data ?? [], now.getDate());
   }
 
   if (name === "gastos_recorrentes") {
     const desde = new Date(now.getTime() - 90 * 86400000).toISOString().slice(0, 10);
     const { data } = await s.from("gastos").select("descricao,destino,valor").eq("user_id", userId).eq("tipo", "saida").gte("data", desde);
-    const map: Record<string, { chave: string; ocorrencias: number; total: number }> = {};
-    (data ?? []).forEach((g: any) => {
-      const k = (g.destino ?? g.descricao ?? "").toLowerCase().trim();
-      if (!k) return;
-      if (!map[k]) map[k] = { chave: g.destino ?? g.descricao, ocorrencias: 0, total: 0 };
-      map[k].ocorrencias += 1; map[k].total += Number(g.valor);
-    });
-    return Object.values(map).filter((x) => x.ocorrencias >= 3).map((x) => ({ ...x, medio: x.total / x.ocorrencias })).sort((a, b) => b.total - a.total).slice(0, 10);
+    return aggGastosRecorrentes(data ?? []);
   }
 
   if (name === "resumo_analitico") {
@@ -345,9 +281,9 @@ Deno.serve(async (req) => {
 
       if (toolCalls.length === 0) { finalText = msg?.content ?? ""; break; }
 
-      const registrar = toolCalls.find((t: any) => t.function?.name === "registrar_lancamento");
-      if (registrar) {
-        try { suggestion = JSON.parse(registrar.function.arguments); } catch (_) {}
+      const decision = decideRegistrar(toolCalls);
+      if (decision.isRegistrar) {
+        suggestion = decision.suggestion;
         finalText = msg?.content || "Identifiquei um lançamento — confirme abaixo:";
         break;
       }

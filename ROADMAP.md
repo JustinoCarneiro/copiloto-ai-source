@@ -73,9 +73,9 @@ abaixo.
 
 | ID | Módulo | Épico | Peso | Status |
 |---|---|---|---|---|
-| M01 | Auth & RBAC | E1 | 🔴 Grande | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
-| M02 | Assinatura & Billing (Mercado Pago) | E8 | 🔴 Grande | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
-| M03 | Copiloto IA (chat + 13 tools + voz) | E7 | 🔴 Grande | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
+| M01 | Auth & RBAC | E1 | 🔴 Grande | ✅ Concluído — `isPremium()` coberta (9 testes); `requireUser`/`isAdmin`/RLS ainda sem teste |
+| M02 | Assinatura & Billing (Mercado Pago) | E8 | 🔴 Grande | ✅ Concluído — lógica de trial/premium coberta (10 testes); edge functions de pagamento ainda sem teste |
+| M03 | Copiloto IA (chat + 13 tools + voz) | E7 | 🔴 Grande | ✅ Concluído — analítica das 13 tools coberta (32 testes) + propriedade de segurança do registrar_lancamento (6 testes); loop de orquestração completo (fetch+Supabase) ainda sem teste |
 | M04 | Lançamentos & Histórico (+ auditoria) | E2 | 🟡 Médio | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M05 | Contas a pagar (parciais + parceladas) | E3 | 🟡 Médio | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M06 | Cartões | E4 | 🟢 Pequeno | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
@@ -133,17 +133,37 @@ M01→E1 · M02→E8 · M03→E7 · M04→E2 · M05→E3 · M06→E4 · M07→E5
 
 ## Débito técnico registrado (cards na lista de Arquitetura do Trello)
 
-**Cobertura de testes — progresso parcial em 2026-08-04.** Além do placeholder original
-(`src/test/example.test.ts`), agora existem 17 testes reais:
-- `src/lib/subscription.test.ts` (10 testes) — cobre `computeSubscriptionState`, a lógica de
-  trial/premium extraída de `usePremium.ts` (M02, módulo Grande/alto risco). Cobre o cálculo de
-  estado, **não** cobre ainda as edge functions de pagamento (`payments-subscribe`,
-  `payments-cancel`, `mercadopago-webhook`) — isso continua pendente.
-- `src/lib/format.test.ts` (7 testes) — `formatBRL`, `monthRange`, `daysUntil` (transversal a
-  M03/M06/M08).
+**Cobertura de testes — atualizado em 2026-08-04.** 75 testes reais no total (rodam em CI):
 
-M01 (Auth/RBAC) e M03 (Copiloto IA) continuam **sem nenhuma cobertura**. Checklist detalhado no
-card "Débito técnico: cobertura de testes automatizados (TDD)" do Trello.
+Frontend (Vitest, `npm run test`) — 21 testes:
+- `src/lib/subscription.test.ts` (10) — `computeSubscriptionState`, trial/premium do M02.
+- `src/lib/format.test.ts` (10) — `formatBRL`, `monthRange`, `daysUntil`, `parseBoldSegments`.
+- `src/test/example.test.ts` (1) — placeholder original.
+
+Edge functions (Deno, `deno test` em `supabase/functions/`) — 54 testes, **novos nesta rodada**:
+- `_shared/analytics.test.ts` (32) — as 13 tools de analítica do M03 (Copiloto IA), extraídas
+  pra `_shared/analytics.ts` como funções puras: `comparar_meses`, `tendencia_categoria`,
+  `media_gastos`, `melhor_cartao_hoje`, `gastos_recorrentes`, etc.
+- `chat-ia/toolRouting.test.ts` (6) — propriedade de segurança mais crítica do M03: quando a IA
+  chama `registrar_lancamento`, nenhuma tool é executada nesse turno, só a sugestão é extraída.
+- `_shared/premium.test.ts` (9) — `computeIsPremium` (M01), extraída de `isPremium()` em
+  `auth.ts`. Achou e corrigiu uma divergência real com a regra do frontend (ver
+  `memoria-tecnica/bugs/ispremium-divergia-do-frontend.md`) — código sem chamador hoje, mas o bug
+  era real.
+- `_shared/webhookAuth.test.ts` (7) — `safeTokenMatch` (M02), a comparação timing-safe do token
+  do webhook do Mercado Pago, corrigida numa rodada anterior e nunca testada até agora.
+
+**O que ainda falta** (gaps conhecidos, não escondidos):
+- M01: `requireUser`/`isAdmin` (I/O direto com Supabase Auth) e as próprias policies RLS no
+  Postgres — precisam de teste de integração contra um banco real/de teste, não unitário.
+- M02: as edge functions de pagamento (`payments-subscribe`, `payments-cancel`,
+  `mercadopago-webhook`) inteiras — só a peça pura (`safeTokenMatch`) foi coberta, o fluxo
+  completo (chamadas HTTP ao Mercado Pago) não.
+- M03: o loop de orquestração completo do `chat-ia` (`Deno.serve` handler) — só a decisão de
+  roteamento do `registrar_lancamento` foi isolada e testada; o loop inteiro (mock de `fetch` +
+  Supabase) exigiria refatorar `index.ts` pra injeção de dependência, ainda não feito.
+
+Checklist completo no card "Débito técnico: cobertura de testes automatizados (TDD)" do Trello.
 
 **Dependências vulneráveis (npm audit, resolvido em 2026-08-04).** 16 de 20 vulnerabilidades
 corrigidas via `npm audit fix` sem major bump. As 4 restantes (Vite/esbuild moderate, React Router

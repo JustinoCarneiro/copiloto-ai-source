@@ -97,13 +97,15 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
 - **Ao resolver um bug não-trivial ou tomar uma decisão fora da spec**, registrar nota nova em `memoria-tecnica/` (templates em `memoria-tecnica/templates/`), linkando às notas relacionadas com a notação `[[nome-da-nota]]`.
 
 ## Débito técnico conhecido
-- **Cobertura de testes automatizados — parcial.** Além do placeholder original, `src/lib/
-  subscription.ts` (lógica de trial/premium do M02) e `src/lib/format.ts` já têm testes reais (17
-  no total, 2026-08-04). M01 (Auth/RBAC), M03 (Copiloto IA) e as edge functions de pagamento
-  continuam sem cobertura — o pilar "Sólido" da Definição de Pronto ainda não está satisfeito de
-  ponta a ponta. Toda mudança em módulo existente ou módulo novo entra pela Esteira XP
-  (`onda-xp-tdd`), com Red/Green/Refactor de verdade. Detalhe em `ROADMAP.md` e no card de
-  Arquitetura do Trello.
+- **Cobertura de testes automatizados — parcial, mas real.** 75 testes rodando em CI: 21 no
+  frontend (Vitest) + 54 nas edge functions (Deno, `supabase/functions/` — via `deno test`,
+  configurado em `supabase/functions/deno.json`). Cobre a lógica pura de M01 (`isPremium`), M02
+  (trial/premium) e M03 (as 13 tools de analítica do Copiloto IA + a propriedade de segurança do
+  `registrar_lancamento`). **Não cobre ainda:** I/O direto com Supabase (`requireUser`, RLS), as
+  edge functions de pagamento de ponta a ponta, nem o loop de orquestração completo do `chat-ia`
+  — o pilar "Sólido" da Definição de Pronto ainda não está satisfeito de ponta a ponta. Toda
+  mudança em módulo existente ou módulo novo entra pela Esteira XP (`onda-xp-tdd`), com
+  Red/Green/Refactor de verdade. Detalhe completo em `ROADMAP.md`.
 - **4 vulnerabilidades de dependência sem fix não-breaking** (Vite/esbuild, React Router) — exigem
   major bump; adiado até haver cobertura de teste suficiente pra validar a migração sem regressão.
 

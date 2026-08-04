@@ -23,8 +23,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Testes (Vitest)
+      - name: Testes (Vitest — frontend)
         run: npm run test
 
       - name: Build
         run: npm run build
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Testes (Deno — edge functions)
+        run: deno test --no-check=remote .
+        working-directory: supabase/functions

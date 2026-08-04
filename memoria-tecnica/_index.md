@@ -25,6 +25,8 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
 ## Bugs
 - [[rls-subscriptions-sem-with-check]] — crítico: RLS de `subscriptions` sem `WITH CHECK` permitia
   auto-promoção a Premium sem pagar. Resolvido em 2026-08-04.
+- [[ispremium-divergia-do-frontend]] — baixa (código morto): `isPremium()` do backend tinha regra
+  de trial diferente do frontend, achado ao escrever testes. Resolvido em 2026-08-04.
 
 ## Decisões
 - [[eslint-scope-supabase-functions]] — por que `supabase/functions` saiu do escopo do eslint e
