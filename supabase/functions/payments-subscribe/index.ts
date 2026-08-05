@@ -1,13 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient } from "../_shared/auth.ts";
 import { getPaymentService, PLAN_PRICES } from "../_shared/payments/service.ts";
-import { z } from "npm:zod@3.23.8";
-
-const BodySchema = z.object({
-  cycle: z.enum(["mensal", "anual"]),
-  cpfCnpj: z.string().min(11).max(18).optional(),
-  phone: z.string().max(20).optional(),
-});
+import { BodySchema, buildSubscriptionUpsertPayload, resolveCustomerIdentity } from "./logic.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -21,9 +15,9 @@ Deno.serve(async (req) => {
 
     const supa = serviceClient();
     const { data: profile } = await supa.from("profiles").select("nome,email").eq("user_id", user.userId).maybeSingle();
-    const name = profile?.nome ?? user.email?.split("@")[0] ?? "Usuário";
-    const email = profile?.email ?? user.email ?? "";
-    if (!email) return jsonResponse({ error: "Email não encontrado no perfil" }, 400);
+    const identity = resolveCustomerIdentity(profile, user);
+    if ("error" in identity) return jsonResponse({ error: identity.error }, 400);
+    const { name, email } = identity;
 
     const { data: existing } = await supa.from("subscriptions").select("*").eq("user_id", user.userId).maybeSingle();
 
@@ -44,19 +38,13 @@ Deno.serve(async (req) => {
       externalReference: user.userId,
     });
 
-    await supa.from("subscriptions").upsert({
-      user_id: user.userId,
-      gateway: service.name,
-      customer_id: customerId,
-      subscription_id: sub.subscriptionId,
-      plano: "free", // vira "premium" via webhook após pagamento confirmado
-      status: sub.status,
-      amount,
-      billing_cycle: cycle,
-      ciclo: cycle,
-      next_due_date: sub.nextDueDate,
-      last_invoice_url: sub.invoiceUrl,
-    }, { onConflict: "user_id" });
+    await supa.from("subscriptions").upsert(
+      buildSubscriptionUpsertPayload({
+        userId: user.userId, gateway: service.name, customerId, subscriptionId: sub.subscriptionId,
+        status: sub.status, amount, cycle, nextDueDate: sub.nextDueDate, invoiceUrl: sub.invoiceUrl,
+      }),
+      { onConflict: "user_id" },
+    );
 
     await supa.from("payment_logs").insert({
       user_id: user.userId,

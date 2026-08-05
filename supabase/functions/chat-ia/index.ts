@@ -6,7 +6,7 @@ import {
   aggMediaGastos, aggResumoMes, aggTendenciaCategoria, clampLimite, computeMetas,
   melhorCartaoHoje, monthRange, parseMonth, type Gasto,
 } from "../_shared/analytics.ts";
-import { decideRegistrar } from "./toolRouting.ts";
+import { decideGatewayOutcome, decideRegistrar } from "./toolRouting.ts";
 
 // serviceClient() (_shared/auth.ts) não usa o generic Database — sem ele, o supabase-js não
 // sabe que categoria_id/cartao_id são FK many-to-one e infere o embed (`categoria:categorias(...)`)
@@ -271,9 +271,14 @@ Deno.serve(async (req) => {
 
     for (let iter = 0; iter < 6; iter++) {
       const response = await callGateway({ model: "google/gemini-3-flash-preview", messages: convo, tools }, LOVABLE_API_KEY);
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Limite atingido. Tente em alguns instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos esgotados. Adicione créditos ao workspace." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (!response.ok) { const txt = await response.text(); console.error("AI gateway error:", response.status, txt); return new Response(JSON.stringify({ error: "Erro na IA" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      const outcome = decideGatewayOutcome(response.status, response.ok);
+      if (outcome.kind !== "ok") {
+        if (outcome.kind === "gateway_error") {
+          const txt = await response.text();
+          console.error("AI gateway error:", response.status, txt);
+        }
+        return new Response(JSON.stringify({ error: outcome.error }), { status: outcome.httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       const data = await response.json();
       const msg = data.choices?.[0]?.message;

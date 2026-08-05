@@ -9,7 +9,10 @@ import type {
 
 const BASE = "https://api.mercadopago.com";
 
-function mapPreapprovalStatus(s?: string): SubscriptionStatus {
+// Exportadas (não só internas) pra serem testadas direto — mapeiam vocabulário do Mercado Pago
+// pro nosso SubscriptionStatus interno; um mapeamento errado aqui muda o plano do usuário
+// silenciosamente via webhook, então vale testar cada status conhecido explicitamente.
+export function mapPreapprovalStatus(s?: string): SubscriptionStatus {
   const v = (s ?? "").toLowerCase();
   if (v === "authorized") return "active";
   if (v === "paused") return "overdue";
@@ -18,7 +21,7 @@ function mapPreapprovalStatus(s?: string): SubscriptionStatus {
   return "pending";
 }
 
-function mapPaymentStatus(s?: string): SubscriptionStatus {
+export function mapPaymentStatus(s?: string): SubscriptionStatus {
   const v = (s ?? "").toLowerCase();
   if (v === "approved") return "active";
   if (v === "in_process" || v === "pending" || v === "authorized") return "pending";

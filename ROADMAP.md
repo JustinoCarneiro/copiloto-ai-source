@@ -73,9 +73,9 @@ abaixo.
 
 | ID | Módulo | Épico | Peso | Status |
 |---|---|---|---|---|
-| M01 | Auth & RBAC | E1 | 🔴 Grande | ✅ Concluído — `isPremium()` coberta (9 testes); `requireUser`/`isAdmin`/RLS ainda sem teste |
-| M02 | Assinatura & Billing (Mercado Pago) | E8 | 🔴 Grande | ✅ Concluído — lógica de trial/premium coberta (10 testes); edge functions de pagamento ainda sem teste |
-| M03 | Copiloto IA (chat + 13 tools + voz) | E7 | 🔴 Grande | ✅ Concluído — analítica das 13 tools coberta (32 testes) + propriedade de segurança do registrar_lancamento (6 testes); loop de orquestração completo (fetch+Supabase) ainda sem teste |
+| M01 | Auth & RBAC | E1 | 🔴 Grande | ✅ Concluído — lógica de `requireUser`/`isAdmin`/`isPremium` coberta (20 testes) + RLS validada contra Postgres real (9 cenários, manual) |
+| M02 | Assinatura & Billing (Mercado Pago) | E8 | 🔴 Grande | ✅ Concluído — trial/premium, status do MP, patch do webhook e payload de assinatura cobertos (55 testes); I/O de `payments-cancel` sem teste |
+| M03 | Copiloto IA (chat + 13 tools + voz) | E7 | 🔴 Grande | ✅ Concluído — analítica das 13 tools + roteamento de tool_calls + status do gateway cobertos (43 testes); loop de orquestração completo (fetch+Supabase) sem teste |
 | M04 | Lançamentos & Histórico (+ auditoria) | E2 | 🟡 Médio | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M05 | Contas a pagar (parciais + parceladas) | E3 | 🟡 Médio | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M06 | Cartões | E4 | 🟢 Pequeno | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
@@ -133,35 +133,50 @@ M01→E1 · M02→E8 · M03→E7 · M04→E2 · M05→E3 · M06→E4 · M07→E5
 
 ## Débito técnico registrado (cards na lista de Arquitetura do Trello)
 
-**Cobertura de testes — atualizado em 2026-08-04.** 75 testes reais no total (rodam em CI):
+**Cobertura de testes — atualizado em 2026-08-04.** 129 testes reais no total (rodam em CI):
 
 Frontend (Vitest, `npm run test`) — 21 testes:
 - `src/lib/subscription.test.ts` (10) — `computeSubscriptionState`, trial/premium do M02.
 - `src/lib/format.test.ts` (10) — `formatBRL`, `monthRange`, `daysUntil`, `parseBoldSegments`.
 - `src/test/example.test.ts` (1) — placeholder original.
 
-Edge functions (Deno, `deno test` em `supabase/functions/`) — 54 testes, **novos nesta rodada**:
-- `_shared/analytics.test.ts` (32) — as 13 tools de analítica do M03 (Copiloto IA), extraídas
-  pra `_shared/analytics.ts` como funções puras: `comparar_meses`, `tendencia_categoria`,
-  `media_gastos`, `melhor_cartao_hoje`, `gastos_recorrentes`, etc.
-- `chat-ia/toolRouting.test.ts` (6) — propriedade de segurança mais crítica do M03: quando a IA
-  chama `registrar_lancamento`, nenhuma tool é executada nesse turno, só a sugestão é extraída.
-- `_shared/premium.test.ts` (9) — `computeIsPremium` (M01), extraída de `isPremium()` em
-  `auth.ts`. Achou e corrigiu uma divergência real com a regra do frontend (ver
-  `memoria-tecnica/bugs/ispremium-divergia-do-frontend.md`) — código sem chamador hoje, mas o bug
-  era real.
-- `_shared/webhookAuth.test.ts` (7) — `safeTokenMatch` (M02), a comparação timing-safe do token
-  do webhook do Mercado Pago, corrigida numa rodada anterior e nunca testada até agora.
+Edge functions (Deno, `deno test` em `supabase/functions/`) — 108 testes:
+- `_shared/analytics.test.ts` (32) — as 13 tools de analítica do M03 (Copiloto IA): `comparar_meses`,
+  `tendencia_categoria`, `media_gastos`, `melhor_cartao_hoje`, `gastos_recorrentes`, etc.
+- `chat-ia/toolRouting.test.ts` (11) — decisão de roteamento do `registrar_lancamento` (propriedade
+  de segurança mais crítica do M03: nenhuma tool executa no turno em que a IA tenta registrar um
+  lançamento) + `decideGatewayOutcome` (mapeamento de status HTTP do gateway de IA pras mensagens
+  de erro exibidas ao usuário — 429/402/erro genérico).
+- `_shared/premium.test.ts` (9) — `computeIsPremium` (M01). Achou e corrigiu uma divergência real
+  com a regra do frontend (`memoria-tecnica/bugs/ispremium-divergia-do-frontend.md`).
+- `_shared/webhookAuth.test.ts` (7) — `safeTokenMatch` (M02), timing-safe compare do token do
+  webhook.
+- `_shared/authLogic.test.ts` (11) — `parseBearerToken`/`extractUserFromClaims`/`hasAdminRole`
+  (M01), extraídas de `requireUser`/`isAdmin` em `auth.ts`.
+- `_shared/payments/mercadopago.test.ts` (15) — `mapPreapprovalStatus`/`mapPaymentStatus`/
+  `parseWebhook` (M02): tradução do vocabulário de status do Mercado Pago pro nosso
+  `SubscriptionStatus` interno.
+- `_shared/payments/webhookLogic.test.ts` (12) — `buildPreapprovalPatch`/`buildPaymentPatch` (M02):
+  a lógica de decisão inteira do `mercadopago-webhook`, incluindo o cálculo de `premium_until`
+  (mensal +1 mês / anual +12 meses).
+- `payments-subscribe/logic.test.ts` (11) — `resolveCustomerIdentity`, `BodySchema` (zod) e
+  `buildSubscriptionUpsertPayload` (M02) + teste de consistência `PLAN_PRICES` vs. o preço exibido
+  em `src/pages/Planos.tsx`.
 
-**O que ainda falta** (gaps conhecidos, não escondidos):
-- M01: `requireUser`/`isAdmin` (I/O direto com Supabase Auth) e as próprias policies RLS no
-  Postgres — precisam de teste de integração contra um banco real/de teste, não unitário.
-- M02: as edge functions de pagamento (`payments-subscribe`, `payments-cancel`,
-  `mercadopago-webhook`) inteiras — só a peça pura (`safeTokenMatch`) foi coberta, o fluxo
-  completo (chamadas HTTP ao Mercado Pago) não.
-- M03: o loop de orquestração completo do `chat-ia` (`Deno.serve` handler) — só a decisão de
-  roteamento do `registrar_lancamento` foi isolada e testada; o loop inteiro (mock de `fetch` +
-  Supabase) exigiria refatorar `index.ts` pra injeção de dependência, ainda não feito.
+Integração de RLS contra Postgres real (`supabase/tests/rls_integration_check.sql`, **não roda em
+CI ainda** — manual, via Docker descartável) — 9 cenários, incluindo os dois que validam o fix
+crítico de `subscriptions` (usuário comum não consegue `INSERT`/`UPDATE` a própria assinatura pra
+premium; `service_role` continua funcionando). Detalhe e achado de GUC em
+`memoria-tecnica/decisoes/rls-integration-check-jwt-claim-guc.md`.
+
+**O que ainda falta** (gap conhecido, não escondido): o loop de orquestração completo do
+`Deno.serve` handler de `chat-ia` (o `for` que chama o gateway de IA + executa tools em sequência)
+— as peças de decisão de dentro dele (roteamento do registrar_lancamento, status do gateway) estão
+testadas isoladas, mas o fluxo completo (mock de `fetch` + Supabase encadeados) exigiria refatorar
+`index.ts` pra injeção de dependência, ainda não feito. Mesma situação pra `payments-cancel`
+(função pequena, majoritariamente I/O, sem lógica pura de peso pra extrair) e pro corpo em si de
+`payments-subscribe`/`mercadopago-webhook` (as peças de decisão já estão cobertas — o que falta é
+só o encadeamento de I/O, não regra de negócio).
 
 Checklist completo no card "Débito técnico: cobertura de testes automatizados (TDD)" do Trello.
 

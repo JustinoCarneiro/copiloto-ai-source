@@ -6,6 +6,7 @@ import { serviceClient } from "../_shared/auth.ts";
 import { getPaymentService } from "../_shared/payments/service.ts";
 import { MercadoPagoProvider } from "../_shared/payments/mercadopago.ts";
 import { safeTokenMatch } from "../_shared/webhookAuth.ts";
+import { buildPaymentPatch, buildPreapprovalPatch } from "../_shared/payments/webhookLogic.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -44,15 +45,7 @@ Deno.serve(async (req) => {
         subRow = data;
         userId = subRow?.user_id ?? pre.externalReference ?? null;
         logAmount = pre.amount;
-
-        patch.status = pre.status;
-        if (pre.nextDueDate) patch.next_due_date = pre.nextDueDate;
-        if (pre.initPoint) patch.last_invoice_url = pre.initPoint;
-        if (pre.status === "active") patch.plano = "premium";
-        if (pre.status === "canceled") {
-          patch.plano = "free";
-          patch.canceled_at = new Date().toISOString();
-        }
+        patch = buildPreapprovalPatch(pre);
       }
     }
 
@@ -72,20 +65,7 @@ Deno.serve(async (req) => {
           userId = subRow?.user_id ?? pay.externalReference ?? null;
         }
 
-        if (pay.status === "active") {
-          patch.plano = "premium";
-          patch.status = "active";
-          patch.payment_method = pay.paymentMethod;
-          if (pay.receiptUrl) patch.last_invoice_url = pay.receiptUrl;
-          if (subRow) {
-            const meses = subRow.billing_cycle === "anual" ? 12 : 1;
-            const until = new Date();
-            until.setMonth(until.getMonth() + meses);
-            patch.premium_until = until.toISOString();
-          }
-        } else if (pay.status === "canceled") {
-          patch.status = "overdue";
-        }
+        patch = buildPaymentPatch(pay, subRow?.billing_cycle, new Date());
       }
     }
 

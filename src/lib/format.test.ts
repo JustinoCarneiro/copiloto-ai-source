@@ -47,25 +47,30 @@ describe("parseBoldSegments", () => {
   });
 });
 
+// toISOString() sempre devolve a data em UTC — usá-lo pra montar uma string "YYYY-MM-DD" a
+// partir de um Date local é o bug clássico de fuso horário: rodando à noite num fuso negativo
+// (ex.: Brasil, -03:00, depois das 21h), "ontem às 21h local" já virou "hoje" em UTC, e o teste
+// passa a falhar de forma intermitente dependendo da hora em que roda. Achado rodando esta
+// suíte à noite pela primeira vez — não era flakiness do daysUntil, era do teste. Formata a
+// partir dos componentes LOCAIS do Date, nunca de toISOString(), pra ficar determinístico em
+// qualquer fuso e qualquer hora do dia.
+const toLocalISODate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 describe("daysUntil", () => {
   it("retorna 0 para uma data que é hoje", () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isoToday = today.toISOString().slice(0, 10);
-    expect(daysUntil(isoToday)).toBe(0);
+    expect(daysUntil(toLocalISODate(new Date()))).toBe(0);
   });
 
   it("retorna negativo para data já vencida", () => {
     const ontem = new Date();
     ontem.setDate(ontem.getDate() - 1);
-    const iso = ontem.toISOString().slice(0, 10);
-    expect(daysUntil(iso)).toBeLessThan(0);
+    expect(daysUntil(toLocalISODate(ontem))).toBeLessThan(0);
   });
 
   it("retorna positivo para data futura", () => {
     const emCinco = new Date();
     emCinco.setDate(emCinco.getDate() + 5);
-    const iso = emCinco.toISOString().slice(0, 10);
-    expect(daysUntil(iso)).toBe(5);
+    expect(daysUntil(toLocalISODate(emCinco))).toBe(5);
   });
 });

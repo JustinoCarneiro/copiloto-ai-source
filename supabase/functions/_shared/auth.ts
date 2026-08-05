@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { computeIsPremium } from "./premium.ts";
+import { extractUserFromClaims, hasAdminRole, parseBearerToken } from "./authLogic.ts";
 
 export function serviceClient(): SupabaseClient {
   return createClient(
@@ -11,22 +12,21 @@ export function serviceClient(): SupabaseClient {
 
 export async function requireUser(req: Request) {
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = parseBearerToken(authHeader);
+  if (!token) return null;
   const supa = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } },
+    { global: { headers: { Authorization: authHeader! } } },
   );
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supa.auth.getClaims(token);
-  if (error || !data?.claims) return null;
-  return { userId: data.claims.sub as string, email: data.claims.email as string | undefined };
+  const result = await supa.auth.getClaims(token);
+  return extractUserFromClaims(result);
 }
 
 export async function isAdmin(userId: string): Promise<boolean> {
   const s = serviceClient();
   const { data } = await s.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
-  return !!data;
+  return hasAdminRole(data);
 }
 
 export async function isPremium(userId: string): Promise<boolean> {
