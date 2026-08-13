@@ -29,6 +29,9 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
   de trial diferente do frontend, achado ao escrever testes. Resolvido em 2026-08-04.
 - [[teste-daysuntil-flaky-fuso-horario]] — baixa: teste de `daysUntil` usava `toISOString()` e
   ficava intermitente dependendo do fuso/hora do dia. Resolvido em 2026-08-04.
+- [[self-host-primeiro-boot-4-bugs-infra]] — alta: 4 bugs de infra (tag do Studio sumida, mount
+  aninhado read-only, authenticator/supabase_auth_admin sem senha por causa do supautils, kong sem
+  envsubst) só apareceram no primeiro boot real do self-host contra a VPS. Resolvido em 2026-08-13.
 
 ## Decisões
 - [[eslint-scope-supabase-functions]] — por que `supabase/functions` saiu do escopo do eslint e

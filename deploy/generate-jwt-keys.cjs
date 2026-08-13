@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Gera ANON_KEY e SERVICE_ROLE_KEY (JWTs HS256) a partir do JWT_SECRET em deploy/.env.
-// Uso: preencher JWT_SECRET em deploy/.env, depois rodar `node deploy/generate-jwt-keys.js`
+// Uso: preencher JWT_SECRET em deploy/.env, depois rodar `node deploy/generate-jwt-keys.cjs`
+// (.cjs, não .js: o package.json da raiz do repo tem "type": "module", então um .js puro
+// com require() quebra com ReferenceError — achado rodando de verdade, não só por precaução)
 // a partir da raiz do repo. Só usa módulos nativos do Node — sem dependência nova.
 const fs = require("fs");
 const path = require("path");

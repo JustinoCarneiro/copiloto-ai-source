@@ -14,9 +14,17 @@ este runbook em relação a uma VPS nova/vazia. Resumo do que muda:
   usa Caddy nem nenhum proxy em Docker**. Kong e o frontend publicam só em `127.0.0.1`, e um vhost
   do nginx do sistema (mesmo padrão de `institutomelvin.org`) expõe pra internet.
 - **Portas 8091 (frontend) e 8092 (kong) foram escolhidas por estarem livres** nesta VPS em
-  2026-08-04. Ocupadas por outros projetos: `22, 53, 80, 443, 3000, 5432, 6001, 6002, 8000, 8081,
-  8082, 8090, 8443` (Melvin, Lucas, Coolify). Confirmar de novo antes de subir se muito tempo tiver
-  passado — outros projetos podem ter mudado.
+  2026-08-04, reconfirmado em 2026-08-13. Ocupadas por outros projetos: `22, 53, 80, 443, 3000,
+  5432, 6001, 6002, 8000, 8081, 8082, 8090, 8443` (Melvin, Lucas, Coolify). Confirmar de novo antes
+  de subir se muito tempo tiver passado — outros projetos podem ter mudado.
+- **O `docker-compose.yml` já embute 4 correções achadas rodando o stack de verdade nesta VPS em
+  2026-08-13** (não são coisas pra fazer manualmente — só documentando o porquê, caso o comando
+  falhe de novo por algum motivo parecido): tag do `supabase/studio` desatualizada (registry mudou
+  a convenção de nome), mountpoint aninhado de `functions/main` que precisa existir de verdade no
+  host, `authenticator`/`supabase_auth_admin` sem senha nenhuma por padrão (resolvido com
+  `db-init-scripts/99-roles.sql`, mesmo padrão do compose oficial do Supabase — **não** tentar
+  `ALTER ROLE` direto, o `supautils` bloqueia mesmo pra superuser), e `kong:3.6` sem `envsubst`
+  instalado (usa `sed` no lugar). Detalhe completo de cada um em `memoria-tecnica/bugs/`.
 
 ## 0. Pré-requisitos
 
@@ -42,7 +50,7 @@ Preencher `.env` (ver comentários de cada variável no próprio arquivo):
 2. `openssl rand -base64 40` → `JWT_SECRET`
 3. `openssl rand -base64 24` → `DASHBOARD_PASSWORD`
 4. `openssl rand -hex 32` → `MP_WEBHOOK_TOKEN`
-5. Rodar `node generate-jwt-keys.js` (a partir de `deploy/`, com `JWT_SECRET` já preenchido) e
+5. Rodar `node generate-jwt-keys.cjs` (a partir de `deploy/`, com `JWT_SECRET` já preenchido) e
    colar `ANON_KEY`/`SERVICE_ROLE_KEY` em **todos** os campos correspondentes indicados nos
    comentários do `.env` (aparecem em mais de um lugar de propósito — ver nota no topo do arquivo).
    Se a VPS não tiver Node instalável facilmente, rodar esse script localmente na sua máquina e só
