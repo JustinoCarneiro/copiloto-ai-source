@@ -1,0 +1,5 @@
+Diretório precisa existir de verdade aqui (não só no host de deploy) — é o mountpoint onde
+deploy/docker-compose.yml sobrepõe deploy/functions-main/ dentro do container do edge-runtime.
+Sem esse diretório existir na origem do mount pai (../supabase/functions:...:ro), o Docker não
+consegue criar o mountpoint pro mount aninhado — acha achado rodando de verdade em 2026-08-13,
+não uma precaução teórica: "unable to start container process ... read-only file system".

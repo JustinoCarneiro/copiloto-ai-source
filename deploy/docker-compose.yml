@@ -25,6 +25,12 @@ services:
       - db-data:/var/lib/postgresql/data
       # Migrations do projeto rodam por fora (ver RUNBOOK — passo explícito via psql), não
       # auto-aplicadas no boot, pra dar controle sobre a ordem e poder validar cada uma.
+      # Mesmo padrão do compose oficial self-host do Supabase (volumes/db/roles.sql): a imagem
+      # supabase/postgres cria authenticator/supabase_auth_admin sem senha nenhuma por padrão.
+      # Precisa ir dentro de init-scripts/ especificamente (não solto em /docker-entrypoint-initdb.d/)
+      # — é essa subpasta que roda no contexto privilegiado que não aciona a proteção do
+      # supautils contra alterar essas roles. Ver comentário dentro do próprio arquivo.
+      - ./db-init-scripts/99-roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 5s
@@ -115,7 +121,10 @@ services:
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
 
   studio:
-    image: supabase/studio:20241001-c7c6a5d
+    # Tag antiga (20241001-c7c6a5d) saiu do registry — Supabase mudou a convenção de tag do
+    # Studio pra "AAAA.MM.DD-sha-<hash>". Pin numa data fixa, não em ":latest" (achado rodando
+    # de verdade em 2026-08-13: docker compose up falhou com "manifest unknown").
+    image: supabase/studio:2026.08.03-sha-022b374
     restart: unless-stopped
     depends_on:
       - meta
@@ -136,7 +145,7 @@ services:
       - functions
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: cors,basic-auth
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
@@ -144,12 +153,15 @@ services:
     volumes:
       - ./kong.yml:/home/kong/kong.yml.template:ro
     # kong.yml.template tem ${DASHBOARD_USERNAME}/${DASHBOARD_PASSWORD} — Kong não faz
-    # interpolação de env sozinho, então renderiza com envsubst antes de subir (mesmo padrão
-    # do self-host oficial da Supabase).
+    # interpolação de env sozinho, precisa renderizar antes de subir. Usa sed, não envsubst: a
+    # imagem kong:3.6 não tem gettext instalado (achado rodando de verdade — "envsubst: not
+    # found"), sed sempre está disponível. Saída em /tmp, não /home/kong: o usuário não-root do
+    # container não tem permissão de escrita em /home/kong ("cannot create /home/kong/kong.yml:
+    # Permission denied" — /tmp sempre é gravável).
     entrypoint: ["sh", "-c"]
     command:
       - |
-        envsubst '$${DASHBOARD_USERNAME} $${DASHBOARD_PASSWORD}' < /home/kong/kong.yml.template > /home/kong/kong.yml
+        sed -e "s|\$${DASHBOARD_USERNAME}|$$DASHBOARD_USERNAME|g" -e "s|\$${DASHBOARD_PASSWORD}|$$DASHBOARD_PASSWORD|g" /home/kong/kong.yml.template > /tmp/kong.yml
         exec /docker-entrypoint.sh kong docker-start
     ports:
       # 8092, não 8000 — porta 8000 já é usada pelo Coolify nesta VPS (ver

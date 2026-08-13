@@ -33,7 +33,7 @@ nenhum dos dois (`avatar_url` vem do provider OAuth, não de upload). Reduz supe
 consumo de recursos na VPS.
 
 Artefatos completos em `deploy/` (docker-compose.yml, kong.yml, nginx-vhost-example.conf,
-.env.example, generate-jwt-keys.js, RUNBOOK.md).
+.env.example, generate-jwt-keys.cjs, RUNBOOK.md).
 
 ## Achado colateral importante
 
@@ -74,7 +74,7 @@ Ajustado em consequência: `deploy/docker-compose.yml` não tem mais serviço `c
 - **Segurança da VPS vira responsabilidade própria** (updates do SO, firewall, hardening do
   Docker) — não é mais responsabilidade da Supabase.
 - **Rotação de JWT_SECRET** não é automática como no Cloud — se precisar revogar, rodar
-  `deploy/generate-jwt-keys.js` de novo gera chaves novas, mas invalida TODAS as sessões
+  `deploy/generate-jwt-keys.cjs` de novo gera chaves novas, mas invalida TODAS as sessões
   existentes (todo mundo precisa logar de novo).
 - Antes de repetir esse tipo de decisão pra outro projeto Onda: o self-host da Supabase é um bom
   meio-termo quando o motivo é custo/controle, não performance — não confundir com "trocar de
