@@ -80,5 +80,22 @@ Ajustado em consequência: `deploy/docker-compose.yml` não tem mais serviço `c
   meio-termo quando o motivo é custo/controle, não performance — não confundir com "trocar de
   banco", que teria custo de reescrita muito maior sem esse ganho.
 
+## Status — 2026-08-13, dry-run completo validado, cutover ainda não feito
+
+Stack subiu de verdade nesta VPS e passou em todo o dry-run (Auth/signup, trigger
+`handle_new_user`, RLS, REST, frontend, roteamento de edge function) — 4 bugs de infra reais
+encontrados e corrigidos nesse processo, ver [[self-host-primeiro-boot-4-bugs-infra]]. nginx +
+certbot também já configurados e validados via HTTPS público de verdade (não só localhost),
+usando domínios provisórios `copiloto-app.157.173.212.76.sslip.io` /
+`copiloto-api.157.173.212.76.sslip.io` (mesmo padrão sem custo que o SAW HUB já usa nesta VPS —
+usuário optou por não comprar domínio próprio por ora).
+
+**O que falta pro cutover de produção de verdade:** `MERCADO_PAGO_ACCESS_TOKEN` e
+`LOVABLE_API_KEY` reais (usuário optou por seguir sem eles por ora — pagamento e chat de IA ficam
+indisponíveis nesse self-host até serem preenchidos), migração do dado real de produção (RUNBOOK
+seção 5), e o cron de backup (seção 10). Produção real continua 100% em Lovable Cloud + Supabase
+Cloud enquanto isso — nenhum usuário real foi afetado por nada deste trabalho.
+
 ## Ligado a
 - [[rls-subscriptions-sem-with-check]]
+- [[self-host-primeiro-boot-4-bugs-infra]]

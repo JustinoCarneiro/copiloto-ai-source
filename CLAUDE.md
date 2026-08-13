@@ -18,7 +18,11 @@ ou voz e responde perguntas analíticas sobre o dinheiro do usuário.
   o resto do sistema
 - **IA:** `ai.gateway.lovable.dev` — Gemini (chat com function-calling) e Whisper/gpt-4o-mini
   (transcrição de voz)
-- **Deploy:** Lovable Cloud (frontend) + Supabase (banco/functions gerenciados)
+- **Deploy:** produção real ainda em Lovable Cloud (frontend) + Supabase (banco/functions
+  gerenciados). Existe um stack self-hosted paralelo (Docker, VPS compartilhada com Sistema
+  Melvin/Lucas/SAW HUB) já no ar e validado via dry-run completo em 2026-08-13 — mas **ainda sem
+  cutover**: sem dado real migrado, sem `MERCADO_PAGO_ACCESS_TOKEN`/`LOVABLE_API_KEY`, hoje
+  respondendo em domínios sslip.io provisórios. Ver `deploy/RUNBOOK.md`.
 
 ## Perfil de projeto
 SaaS de assinatura recorrente (trial + planos mensal/anual) · perfis **usuário comum** e
