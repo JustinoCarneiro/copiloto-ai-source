@@ -118,8 +118,12 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
   negócio (essa já está coberta em módulos separados). Toda mudança em módulo existente ou módulo
   novo entra pela Esteira XP (`onda-xp-tdd`), com Red/Green/Refactor de verdade. Detalhe completo
   em `ROADMAP.md`.
-- **4 vulnerabilidades de dependência sem fix não-breaking** (Vite/esbuild, React Router) — exigem
-  major bump; adiado até haver cobertura de teste suficiente pra validar a migração sem regressão.
+- ~~4 vulnerabilidades de dependência sem fix não-breaking (Vite/esbuild, React Router)~~ —
+  **resolvido em 2026-08-13.** `react-router-dom` 6→7.18.2 e `vite` 5→7.3.6 (não 8: a vulnerabilidade
+  do esbuild já está corrigida a partir do esbuild 0.25, que o Vite passou a empacotar desde a
+  6.3 — subir só até a 7.x resolve o CVE sem forçar o `vitest` pra uma major nova junto, que exigiria
+  vite@8). `npm audit` limpo (0 vulnerabilidades). 148 testes + build + dev server verificados
+  depois do bump, nenhuma quebra.
 - **Pendências que não são código, precisam de ação fora do repo (ninguém verificou ainda):**
   (1) o texto de `/termos` e `/privacidade` é rascunho gerado por IA, marcado como tal na própria
   página — precisa de revisão jurídica antes de valer como termo real, e falta preencher

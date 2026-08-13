@@ -223,10 +223,15 @@ só o encadeamento de I/O, não regra de negócio).
 
 Checklist completo no card "Débito técnico: cobertura de testes automatizados (TDD)" do Trello.
 
-**Dependências vulneráveis (npm audit, resolvido em 2026-08-04).** 16 de 20 vulnerabilidades
-corrigidas via `npm audit fix` sem major bump. As 4 restantes (Vite/esbuild moderate, React Router
-moderate/high) exigem major version bump (Vite 5→8, React Router 6→7) — não aplicado sem
-cobertura de teste prévia para pegar regressão. Card dedicado no Trello.
+**Dependências vulneráveis (npm audit, resolvido em 2026-08-04 e 2026-08-13).** Em 2026-08-04, 16
+de 20 vulnerabilidades corrigidas via `npm audit fix` sem major bump; as 4 restantes (Vite/esbuild,
+React Router) foram adiadas até haver cobertura de teste suficiente pra validar migração sem
+regressão. Em 2026-08-13, com 148 testes no lugar, os 2 bumps foram aplicados:
+`react-router-dom` 6.30.4→7.18.2 e `vite` 5.4.19→7.3.6 (**não 8** — o CVE do esbuild já está
+corrigido a partir do esbuild 0.25, empacotado pelo Vite desde a 6.3; ir só até a 7.x resolve o
+CVE sem puxar o `vitest` pra uma major nova, que só suporta vite@8 na sua própria versão 4.x).
+`npm audit` limpo (0 vulnerabilidades). Verificado: `tsc --noEmit`, 148 testes, `npm run build`,
+`npm run lint` e boot do dev server, todos ok. Card dedicado no Trello.
 
 **Escopo do eslint (resolvido em 2026-08-04).** `supabase/functions` (Deno) estava sendo lintado
 com a config de frontend por engano — corrigido. Ver
