@@ -160,11 +160,16 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
   9. Cron de backup do Postgres self-hosted (RUNBOOK seção 10) — sem isso, self-host não tem a
      rede de segurança que o Supabase Cloud dava de graça. **Não considerar o self-host "pronto"
      sem isso rodando**, mesmo que o cutover em si já tenha acontecido.
-  10. `GOTRUE_MAILER_AUTOCONFIRM` está `"true"` no self-host (decisão explícita do usuário,
-      2026-08-13) porque não há SMTP configurado — sem isso, cadastro ficava travado esperando
-      e-mail de confirmação que nunca chegava. **Revisar antes de qualquer cutover real:** ou
-      configura SMTP de verdade e volta pra `"false"`, ou aceita conscientemente cadastro sem
+  10. Sem SMTP configurado no self-host, nenhum e-mail transacional sai — não só confirmação de
+      cadastro (contornado com `GOTRUE_MAILER_AUTOCONFIRM: "true"`, decisão explícita do usuário
+      em 2026-08-13), mas qualquer fluxo de recuperação de senha por e-mail também ficaria sem
+      efeito se usado. **Revisar antes de qualquer cutover real:** configurar SMTP de verdade (e
+      voltar `GOTRUE_MAILER_AUTOCONFIRM` pra `"false"`) ou aceitar conscientemente cadastro sem
       confirmação de e-mail em produção.
+  11. Login com Google no self-host não está configurado (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+      vazios) — só e-mail/senha funciona por enquanto. Passo a passo em RUNBOOK seção 6.
+  12. Self-host ainda não tem dado real nenhum — é um banco de teste vazio, não é hoje um
+      substituto usável da produção (isso só muda com o item 8, migração do dado real).
 
 ## Ponteiros
 - Histórias completas: `./docs/spec.md`
