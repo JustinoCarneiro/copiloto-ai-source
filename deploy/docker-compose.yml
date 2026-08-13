@@ -54,7 +54,10 @@ services:
       GOTRUE_JWT_EXP: 3600
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
-      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      # "true" enquanto não tem SMTP configurado — sem SMTP, nenhum e-mail de confirmação sai e
+      # todo cadastro fica travado esperando um e-mail que nunca chega (achado testando de
+      # verdade). Revisar antes de qualquer cutover de produção real — ver RUNBOOK.md.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
       GOTRUE_DISABLE_SIGNUP: "false"
       # Login com Google nativo (substitui o proxy do Lovable Cloud que o código usava antes —
       # ver memoria-tecnica/decisoes/self-host-supabase-vps.md). Credenciais vêm do Google Cloud

@@ -12,6 +12,7 @@ import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { validatePassword } from "@/lib/password";
+import { translateAuthError } from "@/lib/authErrors";
 
 const Perfil = () => {
   const { user, signOut } = useAuth();
@@ -46,7 +47,7 @@ const Perfil = () => {
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: pwd });
     setBusy(false);
-    if (error) toast.error(error.message); else { toast.success("Senha alterada"); setPwd(""); }
+    if (error) toast.error(translateAuthError(error.message)); else { toast.success("Senha alterada"); setPwd(""); }
   };
 
   const exportData = async () => {
@@ -103,7 +104,8 @@ const Perfil = () => {
       <Card className="gradient-card border-border p-6 space-y-3">
         <h2 className="font-display font-bold">Alterar senha</h2>
         <form onSubmit={changePwd} className="space-y-3">
-          <Input type="password" minLength={8} required value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Nova senha (mín. 8, com letra e número)" />
+          <Input type="password" minLength={8} required value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Nova senha" />
+          <p className="text-xs text-muted-foreground">Mínimo 8 caracteres, com pelo menos uma letra e um número.</p>
           <Button type="submit" variant="neon" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : "Atualizar senha"}</Button>
         </form>
       </Card>
