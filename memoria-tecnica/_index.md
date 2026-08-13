@@ -48,6 +48,9 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
   legada do Sentry em vez de importar um SDK; sem `SENTRY_DSN` configurado ainda em produção.
 - [[admin-bootstrap-email-removido]] — por que o e-mail hardcoded do admin fundador saiu do
   trigger `handle_new_user`; promoção de admin passa a ser só via UI.
+- [[bump-vite-7-nao-8-react-router-7]] — por que o bump de dependências vulneráveis foi até Vite
+  7.x (não a 8.x sugerida pelo `npm audit fix --force`): o CVE do esbuild já está fechado a partir
+  do Vite 6.3, ir até a 8 só arrastaria uma major nova do `vitest` sem necessidade.
 
 Decisões arquiteturais que já existiam no código antes deste retrofit (ex.: desacoplamento de
 gateway de pagamento em `PaymentProvider`) ficam documentadas no `ROADMAP.md`, não repetidas aqui.
