@@ -2,6 +2,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient } from "../_shared/auth.ts";
 import { getPaymentService, PLAN_PRICES } from "../_shared/payments/service.ts";
 import { BodySchema, buildSubscriptionUpsertPayload, resolveCustomerIdentity } from "./logic.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -61,6 +62,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("payments-subscribe", e);
+    void reportError(e, "payments-subscribe");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

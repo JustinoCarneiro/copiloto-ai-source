@@ -7,6 +7,7 @@ import { getPaymentService } from "../_shared/payments/service.ts";
 import { MercadoPagoProvider } from "../_shared/payments/mercadopago.ts";
 import { safeTokenMatch } from "../_shared/webhookAuth.ts";
 import { buildPaymentPatch, buildPreapprovalPatch } from "../_shared/payments/webhookLogic.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true });
   } catch (e) {
     console.error("mercadopago-webhook error", e);
+    void reportError(e, "mercadopago-webhook");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

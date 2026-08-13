@@ -1,6 +1,7 @@
 // Liberar / remover Premium manualmente. Requer role 'admin'.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient, isAdmin } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 import { z } from "npm:zod@3.23.8";
 
 const BodySchema = z.object({
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true });
   } catch (e) {
     console.error("admin-set-premium", e);
+    void reportError(e, "admin-set-premium");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

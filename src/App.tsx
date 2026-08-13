@@ -7,7 +7,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppShell } from "@/components/AppShell";
 import { CopilotoFAB } from "@/components/CopilotoFAB";
+import { ConsentGate } from "@/components/ConsentGate";
 import Auth from "./pages/Auth";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
 import Dashboard from "./pages/Dashboard";
 import Historico from "./pages/Historico";
 import Categorias from "./pages/Categorias";
@@ -39,10 +42,12 @@ const queryClient = new QueryClient({
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
-    <AppShell>
-      {children}
-      <CopilotoFAB />
-    </AppShell>
+    <ConsentGate>
+      <AppShell>
+        {children}
+        <CopilotoFAB />
+      </AppShell>
+    </ConsentGate>
   </ProtectedRoute>
 );
 
@@ -55,6 +60,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/termos" element={<Termos />} />
+            <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/" element={<Shell><Dashboard /></Shell>} />
             <Route path="/historico" element={<Shell><Historico /></Shell>} />
             <Route path="/contas" element={<Shell><Contas /></Shell>} />

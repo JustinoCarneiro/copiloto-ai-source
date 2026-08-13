@@ -37,10 +37,19 @@ próprios dados via RLS).
   functions com `service_role`; o frontend só le `subscriptions`/`payment_logs` via RLS.
 - **Auditoria onde há dinheiro ou permissão envolvidos:** `gastos_historico` (trigger em UPDATE de
   gastos), `admin_logs` (ações administrativas), `payment_logs` (eventos do gateway).
+- **Direitos do titular (LGPD) são self-service.** Usuário exporta (`account-export`) e exclui
+  (`account-delete`) os próprios dados direto pela página Perfil, sem precisar pedir pro suporte.
+  Aceite de Termos de Uso/Privacidade é obrigatório antes de usar o app (`ConsentGate`), cobrindo
+  tanto cadastro novo quanto contas que já existiam antes desse controle existir.
+- **Erros de edge function são monitorados, não só logados.** `_shared/errorReporting.ts` reporta
+  toda exceção pro Sentry (se `SENTRY_DSN` estiver configurado); nunca é a causa de uma resposta
+  falhar, e nunca some silenciosamente em `console.error` perdido.
 
 ## Épicos
-- **E1 — Autenticação & Perfil.** Cadastro/login (Supabase Auth), perfil próprio, troca de senha,
-  criação automática de categorias padrão no primeiro acesso (`handle_new_user`).
+- **E1 — Autenticação & Perfil.** Cadastro/login (Supabase Auth), perfil próprio, troca de senha
+  (mín. 8 caracteres, letra + número), criação automática de categorias padrão no primeiro acesso
+  (`handle_new_user`), aceite obrigatório de Termos/Privacidade, exportação e exclusão de conta
+  (LGPD) na página Perfil.
 - **E2 — Lançamentos & Histórico.** CRUD de gastos/entradas, categorização, parcelamento,
   histórico de edições auditado.
 - **E3 — Contas a pagar.** Contas fixas/avulsas/parceladas, pagamento total ou parcial, status
@@ -98,10 +107,11 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
 
 ## Débito técnico conhecido
 - **Cobertura de testes automatizados — quase toda a lógica de negócio de M01/M02/M03 fechada.**
-  129 testes rodando em CI: 21 no frontend (Vitest) + 108 nas edge functions (Deno,
+  148 testes rodando em CI: 26 no frontend (Vitest) + 122 nas edge functions (Deno,
   `supabase/functions/` — via `deno test`, configurado em `supabase/functions/deno.json`). Cobre
   Auth/RBAC, trial/premium, mapeamento de status do Mercado Pago, patch do webhook, payload de
-  assinatura e as 13 tools + roteamento de tool_calls do Copiloto IA. RLS validada à parte contra
+  assinatura, as 13 tools + roteamento de tool_calls do Copiloto IA, enforcement de
+  `ia_daily_limit`, política de senha e integração com Sentry. RLS validada à parte contra
   Postgres real (`supabase/tests/rls_integration_check.sql`, manual — não roda em CI).
   **Único gap real que sobra:** o loop de orquestração completo do `Deno.serve` handler de
   `chat-ia` e o corpo de I/O de `payments-cancel` — encadeamento de chamadas, não regra de
@@ -110,6 +120,15 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
   em `ROADMAP.md`.
 - **4 vulnerabilidades de dependência sem fix não-breaking** (Vite/esbuild, React Router) — exigem
   major bump; adiado até haver cobertura de teste suficiente pra validar a migração sem regressão.
+- **Pendências que não são código, precisam de ação fora do repo (ninguém verificou ainda):**
+  (1) o texto de `/termos` e `/privacidade` é rascunho gerado por IA, marcado como tal na própria
+  página — precisa de revisão jurídica antes de valer como termo real, e falta preencher
+  razão social/CNPJ/e-mail do encarregado; (2) `SENTRY_DSN` ainda não está configurado em produção
+  — sem ele, `errorReporting.ts` fica em no-op silencioso; (3) o `minLength` de senha do próprio
+  projeto Supabase Auth (Dashboard → Authentication → Policies) precisa ser alinhado pra 8 — hoje
+  só o frontend força isso, o backend do Supabase Cloud ainda aceita o mínimo de 6 dele; (4) não
+  foi possível confirmar se confirmação de e-mail está habilitada no projeto Supabase Cloud real
+  (não há acesso ao painel a partir daqui).
 
 ## Ponteiros
 - Histórias completas: `./docs/spec.md`

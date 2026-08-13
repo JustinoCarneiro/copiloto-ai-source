@@ -7,6 +7,8 @@ import {
   melhorCartaoHoje, monthRange, parseMonth, type Gasto,
 } from "../_shared/analytics.ts";
 import { decideGatewayOutcome, decideRegistrar } from "./toolRouting.ts";
+import { isDailyLimitExceeded, startOfTodayISO } from "../_shared/iaLimit.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 // serviceClient() (_shared/auth.ts) não usa o generic Database — sem ele, o supabase-js não
 // sabe que categoria_id/cartao_id são FK many-to-one e infere o embed (`categoria:categorias(...)`)
@@ -246,12 +248,22 @@ Deno.serve(async (req) => {
     const auth = await requireUser(req);
     if (!auth) return new Response(JSON.stringify({ error: "Não autenticado" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const userId = auth.userId;
+    const s = serviceClient();
+
+    const { data: sub } = await s.from("subscriptions").select("ia_daily_limit").eq("user_id", userId).maybeSingle();
+    if (sub?.ia_daily_limit != null) {
+      const { count } = await s.from("ia_mensagens")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId).eq("role", "user").gte("created_at", startOfTodayISO(new Date()));
+      if (isDailyLimitExceeded(count ?? 0, sub.ia_daily_limit)) {
+        return new Response(JSON.stringify({ error: "Limite diário de mensagens de IA atingido. Volte amanhã ou fale com o suporte." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     const { messages, conversa_id: conversaIdIn, persist = true } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    const s = serviceClient();
     let conversaId: string | null = conversaIdIn ?? null;
     const lastUser = [...messages].reverse().find((m: any) => m.role === "user");
     if (persist) {
@@ -313,6 +325,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ text: finalText, suggestion, conversa_id: conversaId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("chat-ia error:", e);
+    void reportError(e, "chat-ia");
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

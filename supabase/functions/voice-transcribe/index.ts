@@ -1,5 +1,6 @@
 // Transcrição de áudio para o Copiloto (voz)
 import { requireUser } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("transcribe error", e);
+    void reportError(e, "voice-transcribe");
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
