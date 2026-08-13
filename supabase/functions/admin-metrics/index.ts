@@ -1,6 +1,7 @@
 // Métricas globais e séries temporais para o Dashboard Executivo. Requer role 'admin'.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient, isAdmin } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -89,6 +90,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("admin-metrics", e);
+    void reportError(e, "admin-metrics");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

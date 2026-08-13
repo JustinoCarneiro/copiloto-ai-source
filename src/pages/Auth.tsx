@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { InstallButton } from "@/components/InstallButton";
+import { validatePassword } from "@/lib/password";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Auth = () => {
   const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
@@ -17,6 +19,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
@@ -31,6 +34,15 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      toast.error("Aceite os termos para continuar", { description: "Marque a caixa de aceite dos Termos de Uso e da Política de Privacidade." });
+      return;
+    }
+    const pwdCheck = validatePassword(password);
+    if (!pwdCheck.valid) {
+      toast.error("Senha fraca", { description: pwdCheck.reason });
+      return;
+    }
     setBusy(true);
     const { error } = await signUpWithEmail(email, password, nome || email.split("@")[0]);
     setBusy(false);
@@ -91,8 +103,17 @@ const Auth = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sp">Senha</Label>
-                  <Input id="sp" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  <Input id="sp" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres, com letra e número" />
                 </div>
+                <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Checkbox checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
+                  <span>
+                    Li e aceito os{" "}
+                    <Link to="/termos" target="_blank" className="text-primary underline">Termos de Uso</Link>
+                    {" "}e a{" "}
+                    <Link to="/privacidade" target="_blank" className="text-primary underline">Política de Privacidade</Link>.
+                  </span>
+                </label>
                 <Button type="submit" variant="hero" size="lg" className="w-full" disabled={busy}>
                   {busy ? <Loader2 className="animate-spin" /> : "Criar conta"}
                 </Button>

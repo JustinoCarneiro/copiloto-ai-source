@@ -3,7 +3,9 @@
 // (src/lib/subscription.ts computeSubscriptionState) — as duas tinham divergido silenciosamente
 // (ver memoria-tecnica/bugs/ para o achado completo). isPremium() hoje não tem nenhum chamador
 // no código (dead code) — corrigido e testado do mesmo jeito, pra não herdar o bug quando algo
-// vier a usá-la (ex.: aplicar ia_daily_limit, hoje também sem enforcement em nenhuma function).
+// vier a usá-la. `ia_daily_limit` (outro consumidor natural desta lógica) já tem enforcement
+// próprio em chat-ia (_shared/iaLimit.ts), mas hoje é um teto por usuário setado manualmente
+// pelo admin — ainda não deriva um default automático de "é premium ou não".
 
 export interface SubscriptionRowForPremium {
   plano: string;

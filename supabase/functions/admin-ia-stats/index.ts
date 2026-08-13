@@ -1,6 +1,7 @@
 // Estatísticas de uso da IA. Requer role 'admin'.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient, isAdmin } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 // preço estimado por 1k tokens (Gemini 3 Flash aproximado)
 const COST_PER_MSG = 0.003; // USD estimado por mensagem média
@@ -37,6 +38,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("admin-ia-stats", e);
+    void reportError(e, "admin-ia-stats");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

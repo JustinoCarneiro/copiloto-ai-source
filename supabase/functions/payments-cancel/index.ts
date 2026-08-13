@@ -1,6 +1,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient } from "../_shared/auth.ts";
 import { getPaymentService } from "../_shared/payments/service.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -31,6 +32,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true });
   } catch (e) {
     console.error("payments-cancel", e);
+    void reportError(e, "payments-cancel");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

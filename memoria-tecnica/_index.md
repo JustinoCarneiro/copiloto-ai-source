@@ -41,6 +41,13 @@ pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
 - [[rls-integration-check-jwt-claim-guc]] — verificação de RLS contra Postgres real validou o fix
   crítico de `subscriptions` de ponta a ponta; GUC certo pra simular `auth.uid()` é
   `request.jwt.claim.sub`, não o blob `request.jwt.claims`.
+- [[lgpd-exportacao-e-exclusao-de-conta]] — quais tabelas cascateiam sozinhas de `auth.users` e
+  quais `account-delete`/`account-export` precisam tocar explicitamente; por que o consentimento
+  usa um gate retroativo (`ConsentGate`) em vez de só um checkbox no cadastro.
+- [[monitoramento-erro-sentry-sem-sdk]] — por que `errorReporting.ts` fala HTTP direto com a API
+  legada do Sentry em vez de importar um SDK; sem `SENTRY_DSN` configurado ainda em produção.
+- [[admin-bootstrap-email-removido]] — por que o e-mail hardcoded do admin fundador saiu do
+  trigger `handle_new_user`; promoção de admin passa a ser só via UI.
 
 Decisões arquiteturais que já existiam no código antes deste retrofit (ex.: desacoplamento de
 gateway de pagamento em `PaymentProvider`) ficam documentadas no `ROADMAP.md`, não repetidas aqui.

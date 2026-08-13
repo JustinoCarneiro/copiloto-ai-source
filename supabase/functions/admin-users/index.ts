@@ -1,6 +1,7 @@
 // Lista de usuários com plano/status/próxima cobrança. Requer role 'admin'.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient, isAdmin } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -39,6 +40,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("admin-users", e);
+    void reportError(e, "admin-users");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });

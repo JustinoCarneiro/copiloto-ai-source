@@ -83,6 +83,7 @@ abaixo.
 | M08 | Dashboard & Relatórios (export PDF) | E6 | 🟡 Médio | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M09 | Admin/Backoffice (9 telas + auditoria) | E9 | 🔴 Grande | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
 | M10 | Perfil & PWA | E1/E10 | 🟢 Pequeno | ✅ Concluído (retroativo — pré-Onda, sem TDD formal) |
+| M11 | Conformidade LGPD & Observabilidade | E1 | 🟡 Médio | ✅ Concluído (2026-08-13, já na Esteira XP — `iaLimit`, `errorReporting`, `accountDeletion`, `accountExport` nascem com teste) |
 
 **Regra do coração, aplicada retroativamente:** os três módulos de maior risco (M01 Auth/RBAC, M02
 Billing, M03 Copiloto IA) são também os que mais precisam de cobertura de teste ao serem tocados
@@ -125,22 +126,57 @@ POST /functions/v1/admin-user-actions
 POST /functions/v1/admin-set-premium
   Body: { userId: uuid, action: "grant"|"revoke", cycle?, meses? }
 Response 403 em todas: { error: "Acesso restrito" } se role != admin
+
+POST /functions/v1/account-export
+Auth: Bearer (usuário) · Body: {}
+Response 200: { exported_at, user_id, ...uma chave por tabela de domínio } — LGPD Art. 18, V
+Response 401/500: { error: string }
+
+POST /functions/v1/account-delete
+Auth: Bearer (usuário) · Body: {}
+Response 200: { ok: true } — apaga tabelas sem FK até auth.users e depois auth.admin.deleteUser()
+Response 401/500: { error: string }
 ```
 
 ## Rastreabilidade história ↔ módulo
 
 M01→E1 · M02→E8 · M03→E7 · M04→E2 · M05→E3 · M06→E4 · M07→E5 · M08→E6 · M09→E9 · M10→E1,E10.
 
+## Auditoria de produção/comercialização — resolvido em 2026-08-13
+
+Revisão completa de prontidão pra produção real e cobrança de clientes identificou 3 gaps 🔴
+(bloqueantes) e 4 🟡 (importantes). Todos os que dependiam só de código foram fechados:
+
+- 🔴 **LGPD.** Termos de Uso + Política de Privacidade (`/termos`, `/privacidade` — rascunho,
+  marcado como tal, precisa de revisão jurídica antes de valer), aceite obrigatório
+  (`ConsentGate`, cobre contas novas e existentes), exportação (`account-export`) e exclusão
+  (`account-delete`) de conta.
+- 🔴 **`ia_daily_limit` sem enforcement.** Coluna e UI de admin já existiam, mas nenhuma function
+  checava — `_shared/iaLimit.ts` fecha isso em `chat-ia`.
+- 🔴 **Sem monitoramento de erro.** `_shared/errorReporting.ts` reporta exceções pro Sentry (API
+  legada `store`, sem SDK) quando `SENTRY_DSN` está setado; sem DSN, no-op silencioso — **DSN
+  ainda não configurado em produção, pendência fora do código.**
+- 🟡 **Senha fraca.** `minLength` 6→8 + exige letra e número (`src/lib/password.ts`), aplicado no
+  cadastro e na troca de senha — **o projeto Supabase Auth em si ainda aceita mínimo 6, pendência
+  de configuração no Dashboard, fora do alcance do código.**
+- 🟡 **E-mail de admin hardcoded no trigger de novo usuário.** Removido — promoção de admin passa
+  a ser só via UI (`admin-user-actions`), não mais por comparação de e-mail em todo cadastro novo.
+- 🟡 **Confirmação de e-mail habilitada no Supabase Cloud real?** Não verificável a partir do
+  código/repo — checar no Dashboard.
+- 🟡 **Direito de arrependimento (CDC, 7 dias).** Coberto no rascunho de Termos (trial de 7 dias
+  antecede toda cobrança) — decisão de reembolso final é de negócio/jurídico, sinalizada no texto.
+
 ## Débito técnico registrado (cards na lista de Arquitetura do Trello)
 
-**Cobertura de testes — atualizado em 2026-08-04.** 129 testes reais no total (rodam em CI):
+**Cobertura de testes — atualizado em 2026-08-13.** 148 testes reais no total (rodam em CI):
 
-Frontend (Vitest, `npm run test`) — 21 testes:
+Frontend (Vitest, `npm run test`) — 26 testes:
 - `src/lib/subscription.test.ts` (10) — `computeSubscriptionState`, trial/premium do M02.
 - `src/lib/format.test.ts` (10) — `formatBRL`, `monthRange`, `daysUntil`, `parseBoldSegments`.
+- `src/lib/password.test.ts` (5) — `validatePassword` (M11): mínimo 8, exige letra e número.
 - `src/test/example.test.ts` (1) — placeholder original.
 
-Edge functions (Deno, `deno test` em `supabase/functions/`) — 108 testes:
+Edge functions (Deno, `deno test` em `supabase/functions/`) — 122 testes:
 - `_shared/analytics.test.ts` (32) — as 13 tools de analítica do M03 (Copiloto IA): `comparar_meses`,
   `tendencia_categoria`, `media_gastos`, `melhor_cartao_hoje`, `gastos_recorrentes`, etc.
 - `chat-ia/toolRouting.test.ts` (11) — decisão de roteamento do `registrar_lancamento` (propriedade
@@ -162,6 +198,13 @@ Edge functions (Deno, `deno test` em `supabase/functions/`) — 108 testes:
 - `payments-subscribe/logic.test.ts` (11) — `resolveCustomerIdentity`, `BodySchema` (zod) e
   `buildSubscriptionUpsertPayload` (M02) + teste de consistência `PLAN_PRICES` vs. o preço exibido
   em `src/pages/Planos.tsx`.
+- `_shared/iaLimit.test.ts` (6) — `isDailyLimitExceeded`/`startOfTodayISO` (M11): enforcement de
+  `ia_daily_limit` no `chat-ia`.
+- `_shared/errorReporting.test.ts` (6) — `parseDsn`/`buildStoreUrl`/`buildAuthHeader`/
+  `buildErrorEvent` (M11): integração com Sentry sem SDK.
+- `_shared/accountDeletion.test.ts` (1) e `_shared/accountExport.test.ts` (1) — listas de tabelas
+  (M11): quais cascateiam de `auth.users` sozinhas vs. quais `account-delete`/`account-export`
+  precisam tocar explicitamente.
 
 Integração de RLS contra Postgres real (`supabase/tests/rls_integration_check.sql`, **não roda em
 CI ainda** — manual, via Docker descartável) — 9 cenários, incluindo os dois que validam o fix

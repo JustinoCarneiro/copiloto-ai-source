@@ -1,6 +1,7 @@
 // Ações administrativas sobre usuários: bloquear, desbloquear, mudar plano, ver movimentações.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireUser, serviceClient, isAdmin } from "../_shared/auth.ts";
+import { reportError } from "../_shared/errorReporting.ts";
 import { z } from "npm:zod@3.23.8";
 
 const BodySchema = z.object({
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "action desconhecida" }, 400);
   } catch (e) {
     console.error("admin-user-actions", e);
+    void reportError(e, "admin-user-actions");
     return jsonResponse({ error: e instanceof Error ? e.message : "Erro" }, 500);
   }
 });
