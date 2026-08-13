@@ -83,6 +83,35 @@ o PRIMEIRO erro que apareceu, mascarando o do `envsubst` que só ficou visível 
 destino pra `/tmp/kong.yml`). **Solução:** troca `envsubst` por `sed` (sempre disponível, não
 depende de pacote extra) e escreve em `/tmp/kong.yml` em vez de `/home/kong/kong.yml`.
 
+## Bug 5 (achado no teste manual do usuário, não no dry-run automatizado) — sem SMTP, cadastro trava
+
+`GOTRUE_MAILER_AUTOCONFIRM` estava `"false"` (padrão seguro) mas sem nenhum `GOTRUE_SMTP_*`
+configurado — ou seja, GoTrue exige confirmação de e-mail mas não tem como enviar o e-mail de
+confirmação. Resultado: usuário se cadastra com sucesso, tenta logar, recebe "Email not
+confirmed" pra sempre, sem nenhum caminho de saída pela UI. Só apareceu no teste manual do
+usuário (o dry-run automatizado sempre confirmava manualmente via SQL antes de testar login, o
+que mascarou esse problema). **Solução adotada:** `GOTRUE_MAILER_AUTOCONFIRM: "true"` até SMTP
+real ser configurado — decisão explícita do usuário, documentada como pendência de revisão antes
+de qualquer cutover de produção real (ver `memoria-tecnica/decisoes/self-host-supabase-vps.md`).
+
+Efeito colateral do mesmo teste manual: dois bugs de UX reais também apareceram e foram corrigidos
+— mensagem de erro do GoTrue aparecia crua em inglês pro usuário PT-BR (`src/lib/authErrors.ts`,
+tradução das mensagens mais comuns) e a regra de senha forte só aparecia depois de errar o
+submit, não como dica visível de antemão (adicionado texto de ajuda fixo abaixo do campo em
+`Auth.tsx`/`Perfil.tsx`).
+
+## Erro de operação (meu, não do stack) — `rsync` sem barra final apagou e reestruturou `src/` na VPS
+
+Ao sincronizar o frontend corrigido, rodei `rsync -avz --delete src root@...:.../src/` (sem barra
+final em `src`) — isso faz o rsync tratar `src` como a PASTA a copiar PRA DENTRO do destino
+`.../src/`, gerando `.../src/src/*` aninhado, enquanto `--delete` removia o conteúdo real de
+`.../src/` por não bater com o único item esperado (a pasta `src` aninhada). Só percebido porque
+o bundle rebuildado continuava com o hash antigo (rebuild usava conteúdo cacheado/desatualizado).
+**Lição:** `rsync` com diretório como origem — sempre barra final (`src/`, não `src`) quando o
+destino já é o diretório de conteúdo equivalente, e **conferir o conteúdo realmente sincronizado**
+(`grep` de uma string conhecida no arquivo remoto) antes de assumir que um `--delete` silencioso
+não bagunçou nada.
+
 ## Por que nenhum desses apareceu antes
 
 `docker compose config` só valida sintaxe YAML/interpolação de variável — nunca baixa imagem, nunca

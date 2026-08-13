@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { InstallButton } from "@/components/InstallButton";
 import { validatePassword } from "@/lib/password";
+import { translateAuthError } from "@/lib/authErrors";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const Auth = () => {
@@ -29,7 +30,7 @@ const Auth = () => {
     setBusy(true);
     const { error } = await signInWithEmail(email, password);
     setBusy(false);
-    if (error) toast.error("Não foi possível entrar", { description: error });
+    if (error) toast.error("Não foi possível entrar", { description: translateAuthError(error) });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -46,7 +47,7 @@ const Auth = () => {
     setBusy(true);
     const { error } = await signUpWithEmail(email, password, nome || email.split("@")[0]);
     setBusy(false);
-    if (error) toast.error("Não foi possível criar conta", { description: error });
+    if (error) toast.error("Não foi possível criar conta", { description: translateAuthError(error) });
     else toast.success("Conta criada!", { description: "Você já pode entrar." });
   };
 
@@ -103,7 +104,8 @@ const Auth = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sp">Senha</Label>
-                  <Input id="sp" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres, com letra e número" />
+                  <Input id="sp" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                  <p className="text-xs text-muted-foreground">Mínimo 8 caracteres, com pelo menos uma letra e um número.</p>
                 </div>
                 <label className="flex items-start gap-2 text-xs text-muted-foreground">
                   <Checkbox checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-0.5" />
