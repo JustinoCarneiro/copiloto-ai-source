@@ -128,15 +128,38 @@ bugs cabeludos resolvidos (causa raiz, não só sintoma) e decisões técnicas t
   6.3 — subir só até a 7.x resolve o CVE sem forçar o `vitest` pra uma major nova junto, que exigiria
   vite@8). `npm audit` limpo (0 vulnerabilidades). 148 testes + build + dev server verificados
   depois do bump, nenhuma quebra.
-- **Pendências que não são código, precisam de ação fora do repo (ninguém verificou ainda):**
-  (1) o texto de `/termos` e `/privacidade` é rascunho gerado por IA, marcado como tal na própria
-  página — precisa de revisão jurídica antes de valer como termo real, e falta preencher
-  razão social/CNPJ/e-mail do encarregado; (2) `SENTRY_DSN` ainda não está configurado em produção
-  — sem ele, `errorReporting.ts` fica em no-op silencioso; (3) o `minLength` de senha do próprio
-  projeto Supabase Auth (Dashboard → Authentication → Policies) precisa ser alinhado pra 8 — hoje
-  só o frontend força isso, o backend do Supabase Cloud ainda aceita o mínimo de 6 dele; (4) não
-  foi possível confirmar se confirmação de e-mail está habilitada no projeto Supabase Cloud real
-  (não há acesso ao painel a partir daqui).
+- **Pendências que não são código — exigem ação fora do repo, ninguém verificou/preencheu ainda.**
+  Atualizado em 2026-08-13.
+
+  *Compliance/produção (independem do self-host):*
+  1. Texto de `/termos` e `/privacidade` é rascunho gerado por IA (marcado como tal na própria
+     página) — precisa de revisão jurídica antes de valer como termo real, e falta preencher razão
+     social/CNPJ/e-mail do encarregado.
+  2. `SENTRY_DSN` não está configurado em nenhum ambiente ainda — sem ele, `errorReporting.ts` fica
+     em no-op silencioso (não quebra nada, só não reporta erro pra lugar nenhum).
+  3. `minLength` de senha do próprio projeto Supabase Auth (Dashboard → Authentication → Policies)
+     precisa subir pra 8 — hoje só o frontend força isso, o backend do Supabase Cloud ainda aceita
+     mínimo 6.
+  4. Não foi possível confirmar se confirmação de e-mail está habilitada no Supabase Cloud real
+     (sem acesso ao painel a partir daqui).
+  5. Não confirmado se as migrations de segurança já rodaram na produção real do Supabase Cloud:
+     `20260804200000_fix_subscriptions_rls_no_client_writes.sql` (crítica — bloqueia auto-promoção
+     a Premium sem pagar) e `20260813120000_remove_hardcoded_admin_email_from_trigger.sql` +
+     `20260813120100_add_terms_accepted_at_to_profiles.sql`. O SQL está pronto no repo; falta
+     alguém com acesso ao painel/CLI do projeto real rodar.
+
+  *Self-host na VPS (`deploy/RUNBOOK.md` — dry-run já validado, cutover não feito, ver
+  `memoria-tecnica/decisoes/self-host-supabase-vps.md`):*
+  6. `MERCADO_PAGO_ACCESS_TOKEN` e `LOVABLE_API_KEY` reais — sem eles, pagamento e chat de IA ficam
+     indisponíveis no self-host (usuário optou por seguir sem, por ora).
+  7. Domínio próprio — hoje respondendo em `copiloto-app.157.173.212.76.sslip.io` /
+     `copiloto-api...sslip.io` (sem custo, mesmo padrão do SAW HUB nesta VPS). Trocar por domínio
+     real é reconfiguração pequena (`.env` + vhost do nginx), não um redesenho.
+  8. Migração do dado real de produção (RUNBOOK seção 5) — janela curta de manutenção, ponto de
+     não-retorno relativo, só depois do item 6 preenchido.
+  9. Cron de backup do Postgres self-hosted (RUNBOOK seção 10) — sem isso, self-host não tem a
+     rede de segurança que o Supabase Cloud dava de graça. **Não considerar o self-host "pronto"
+     sem isso rodando**, mesmo que o cutover em si já tenha acontecido.
 
 ## Ponteiros
 - Histórias completas: `./docs/spec.md`
