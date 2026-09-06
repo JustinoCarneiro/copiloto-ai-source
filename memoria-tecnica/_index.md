@@ -8,8 +8,7 @@ Base de conhecimento viva do projeto: bugs cabeludos resolvidos (com causa raiz)
 tomadas fora da spec original do [`CLAUDE.md`](../CLAUDE.md). Não documenta conceitos genéricos — só o
 que é específico deste projeto e não seria óbvio olhando só o código.
 
-Padrão da metodologia Onda-Dev — ver seção 11 de
-[`Metodologia_de_Desenvolvimento_-_Onda.md`](../../onda-starter/docs/Metodologia_de_Desenvolvimento_-_Onda.md)
+Padrão da metodologia OndaDev (Memória Técnica Viva) — metodologia canônica no `onda-starter`, versão em `ONDA_VERSION`
 pro critério completo de quando vale (e quando não vale) criar uma nota aqui.
 
 ## Como usar
