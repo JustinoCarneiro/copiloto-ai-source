@@ -1,0 +1,9 @@
+title = "Copiloto AI — gitleaks"
+
+# Histórico limpo (0 vazamentos em 2026-09-06).
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Placeholders de exemplo."
+paths = ['''deploy/\.env\.example''']

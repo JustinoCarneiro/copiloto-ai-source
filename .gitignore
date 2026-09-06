@@ -28,3 +28,6 @@ deploy/.env
 *.njsproj
 *.sln
 *.sw?
+
+# ─── OndaDev ───
+.ondadev/handoff/current.md

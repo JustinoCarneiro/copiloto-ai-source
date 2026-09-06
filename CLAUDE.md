@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Copiloto AI
 
 SaaS de finanças pessoais com um assistente de IA ("Copiloto") que registra lançamentos por texto
@@ -94,12 +96,8 @@ trigger `atualiza_conta_pagamento` soma `valor_pago` e fecha quando `valor_pago 
 - Nomenclatura de domínio em português (`gastos`, `contas`, `cartoes`, `metas`) — manter consistência.
 - Diretiva Primária na Fase 4: não alterar sintaxe de código existente sem necessidade.
 
-## Diretivas de Gestão (Regra de Ouro do Trello)
-> **ATENÇÃO:** Toda vez que você (Claude/IA) criar, modificar ou deletar qualquer especificação
-> funcional ou técnica nos arquivos `CLAUDE.md`, `ROADMAP.md`, `docs/spec.md` ou `design/DESIGN.md`,
-> você é **OBRIGADO** a executar `./scripts/trello_sync.py` para espelhar essa alteração no board
-> **"Copiloto AI"** no Trello (criar card no Backlog, atualizar Critérios de Aceite, ou arquivar o
-> que foi cancelado). Documentação e Trello são a mesma entidade.
+## Diretivas de Gestão
+> O escopo mora em `CLAUDE.md` + `docs/spec.md` + `ROADMAP.md` — a spec muda primeiro nos arquivos. **Não há mais Trello** e não há quadro externo obrigatório para este projeto no momento. Se um board (Jira) for criado, ele é uma **projeção do status**, acertado à mão, nunca disparado automaticamente por edição de doc. Mudança de escopo daqui pra frente segue um Change Request curto com impacto explícito.
 
 ## Memória Técnica (Bugs e Decisões)
 Vault Obsidian em [`./memoria-tecnica/`](./memoria-tecnica/_index.md), dentro do próprio repo —
